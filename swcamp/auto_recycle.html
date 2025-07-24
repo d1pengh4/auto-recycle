@@ -27,6 +27,9 @@
     <script>
     let auto = false, intervalId = null, port = null, writer = null, lastLabel = '', lastSend = 0;
     let currentStream = null;
+    let previousFrame = null; // 이전 프레임을 저장할 변수
+    let changeThreshold = 0.05; // 변화 감지 임계값 (5%)
+    let isProcessing = false; // 현재 분류 처리 중인지 확인
 
     // 카메라 목록 불러오기 및 선택
     async function updateCameraList() {
@@ -68,24 +71,84 @@
         }
     });
 
+    // 프레임 변화 감지 함수
+    function detectFrameChange(currentImageData, previousImageData) {
+        if (!previousImageData) return true; // 첫 번째 프레임은 항상 변화로 간주
+        
+        const current = currentImageData.data;
+        const previous = previousImageData.data;
+        let totalDiff = 0;
+        let pixelCount = current.length / 4; // RGBA이므로 4로 나눔
+        
+        // 픽셀별 차이 계산 (RGB 값만 비교)
+        for (let i = 0; i < current.length; i += 4) {
+            const rDiff = Math.abs(current[i] - previous[i]);
+            const gDiff = Math.abs(current[i + 1] - previous[i + 1]);
+            const bDiff = Math.abs(current[i + 2] - previous[i + 2]);
+            totalDiff += (rDiff + gDiff + bDiff) / 3;
+        }
+        
+        const avgDiff = totalDiff / pixelCount;
+        const changePercentage = avgDiff / 255; // 0-1 범위로 정규화
+        
+        console.log(`프레임 변화율: ${(changePercentage * 100).toFixed(2)}%`);
+        return changePercentage > changeThreshold;
+    }
+
+    // 프레임 모니터링 함수
+    function monitorFrameChanges() {
+        const video = document.getElementById('video');
+        if (video.videoWidth === 0) return;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // 변화 감지
+        if (!isProcessing && detectFrameChange(currentImageData, previousFrame)) {
+            console.log('프레임 변화 감지됨 - 분류 시작');
+            document.getElementById('result').innerText = '쓰레기 감지됨 - 분석 중...';
+            captureAndClassify();
+        }
+        
+        // 현재 프레임을 이전 프레임으로 저장
+        previousFrame = currentImageData;
+    }
+
     async function toggleAuto() {
       auto = !auto;
       document.getElementById('autoBtn').innerText = auto ? '자동 분류 정지' : '자동 분류 시작';
       if (auto) {
-        intervalId = setInterval(captureAndClassify, 2000);
+        document.getElementById('result').innerText = '자동 분류 모드 활성화 - 프레임 변화 감지 중...';
+        previousFrame = null; // 초기화
+        intervalId = setInterval(monitorFrameChanges, 500); // 0.5초마다 프레임 변화 확인
       } else {
         clearInterval(intervalId);
+        document.getElementById('result').innerText = '자동 분류 모드 비활성화';
+        previousFrame = null;
       }
     }
 
     async function captureAndClassify() {
+      if (isProcessing) return; // 이미 처리 중이면 중복 실행 방지
+      isProcessing = true;
+      
       const video = document.getElementById('video');
-      if (video.videoWidth === 0) return;
+      if (video.videoWidth === 0) {
+        isProcessing = false;
+        return;
+      }
+      
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth; 
+      canvas.height = video.videoHeight;
       canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
       const b64 = canvas.toDataURL('image/jpeg').split(',')[1];
-      document.getElementById('result').innerText = '분석 중...';
+      
       try {
         const res = await fetch('http://localhost:5005/classify', {
           method: 'POST',
@@ -115,11 +178,24 @@
             lastLabel = unified;
             lastSend = Date.now();
           }
+          
+          // 분류 완료 후 3초 대기 (새로운 쓰레기 투입을 위해)
+          setTimeout(() => {
+            if (auto) {
+              document.getElementById('result').innerText = '자동 분류 모드 활성화 - 프레임 변화 감지 중...';
+            }
+          }, 3000);
+          
         } else {
           document.getElementById('result').innerText = '결과: ' + JSON.stringify(data, null, 2);
         }
       } catch (err) {
         document.getElementById('result').innerText = '오류 발생: ' + err.message;
+      } finally {
+        // 3초 후에 다시 처리 가능하도록 설정
+        setTimeout(() => {
+          isProcessing = false;
+        }, 3000);
       }
     }
 
