@@ -116,6 +116,7 @@
             </select>
             <button onclick="startCamera()">📷 카메라 시작</button>
             <button onclick="stopCamera()">⏹️ 카메라 중지</button>
+            <button onclick="checkServer()">🔍 서버 상태 확인</button>
             <button onclick="testClassification()">🧪 분류 테스트</button>
             <button onclick="toggleAuto()" id="autoBtn">🔄 자동 분류 시작</button>
             <button onclick="connectSerial()">🔌 시리얼 연결</button>
@@ -545,7 +546,63 @@
             }
         }
 
-                 // 분류 테스트 (수동)
+                 // 서버 상태 확인
+         async function checkServer() {
+             document.getElementById('result').innerHTML = '🔍 서버 연결 상태 확인 중...';
+             document.getElementById('status').innerHTML = '📡 localhost:5005 연결 테스트';
+             
+             const endpoints = [
+                 'http://localhost:5005/classify',
+                 'http://localhost:5005/predict', 
+                 'http://127.0.0.1:5005/classify',
+                 'http://127.0.0.1:5005/predict'
+             ];
+             
+             let serverFound = false;
+             let workingEndpoint = null;
+             
+             for (const endpoint of endpoints) {
+                 try {
+                     document.getElementById('status').innerHTML = `🔍 테스트 중: ${endpoint}`;
+                     
+                     const controller = new AbortController();
+                     const timeoutId = setTimeout(() => controller.abort(), 3000);
+                     
+                     const response = await fetch(endpoint, {
+                         method: 'GET',
+                         signal: controller.signal,
+                         mode: 'cors'
+                     });
+                     
+                     clearTimeout(timeoutId);
+                     
+                     if (response.status === 200 || response.status === 405) { // GET이 안되면 405 Method Not Allowed
+                         serverFound = true;
+                         workingEndpoint = endpoint;
+                         document.getElementById('result').innerHTML = 
+                             `✅ 서버 연결 성공!<br>
+                              <small>엔드포인트: ${endpoint}</small><br>
+                              <small>상태: ${response.status} ${response.statusText}</small>`;
+                         document.getElementById('status').innerHTML = '✅ 서버가 정상 작동 중입니다';
+                         break;
+                     }
+                 } catch (error) {
+                     console.log(`${endpoint} 연결 실패:`, error.message);
+                     continue;
+                 }
+             }
+             
+             if (!serverFound) {
+                 document.getElementById('result').innerHTML = 
+                     `❌ localhost:5005 서버에 연결할 수 없습니다<br>
+                      <small>• 서버가 실행 중인지 확인하세요</small><br>
+                      <small>• 포트 5005가 열려있는지 확인하세요</small><br>
+                      <small>• CORS 설정이 되어있는지 확인하세요</small>`;
+                 document.getElementById('status').innerHTML = '❌ 서버 연결 실패 - 데모 모드로 작동합니다';
+             }
+         }
+
+         // 분류 테스트 (수동)
          async function testClassification() {
              const video = document.getElementById('video');
              if (!video || video.videoWidth === 0) {
@@ -581,8 +638,15 @@
                   // 서버 연결 진단
                   document.getElementById('status').innerHTML = '🔍 서버 연결 진단 중...';
                   
-                  // 여러 엔드포인트 시도
-                  const endpoints = ['/classify', '/predict', '/api/classify', '/api/predict'];
+                  // 로컬 서버 5005 포트 엔드포인트 시도
+                  const endpoints = [
+                      'http://localhost:5005/classify',
+                      'http://localhost:5005/predict', 
+                      'http://127.0.0.1:5005/classify',
+                      'http://127.0.0.1:5005/predict',
+                      '/classify', 
+                      '/predict'
+                  ];
                   let success = false;
                   let result = null;
                   
@@ -597,7 +661,11 @@
                           const response = await fetch(endpoint, {
                               method: 'POST',
                               body: formData,
-                              signal: controller.signal
+                              signal: controller.signal,
+                              mode: 'cors',
+                              headers: {
+                                  'Accept': 'application/json'
+                              }
                           });
                           
                           clearTimeout(timeoutId);
