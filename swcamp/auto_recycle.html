@@ -116,6 +116,7 @@
             </select>
             <button onclick="startCamera()">📷 카메라 시작</button>
             <button onclick="stopCamera()">⏹️ 카메라 중지</button>
+            <button onclick="testClassification()">🧪 분류 테스트</button>
             <button onclick="toggleAuto()" id="autoBtn">🔄 자동 분류 시작</button>
             <button onclick="connectSerial()">🔌 시리얼 연결</button>
         </div>
@@ -479,42 +480,16 @@
                 
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                // 이미지 전처리 적용
-                const optimizedCanvas = preprocessImage(canvas);
-                
-                document.getElementById('result').innerHTML = '🤖 AI 분석 중...';
-                document.getElementById('status').innerHTML = '🧠 딥러닝 처리 중...';
-                
-                const blob = await new Promise(resolve => optimizedCanvas.toBlob(resolve, 'image/jpeg', 0.8));
-                const formData = new FormData();
-                formData.append('file', blob, 'image.jpg');
-                
-                const response = await fetch('/classify', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    const label = result.label || '알 수 없음';
-                    const confidence = result.confidence || 0;
-                    
-                    document.getElementById('result').innerHTML = 
-                        `🎯 분류 결과: <span style="color: #4CAF50">${label}</span><br>
-                         <small>신뢰도: ${(confidence * 100).toFixed(1)}%</small>`;
-                    
-                    document.getElementById('status').innerHTML = '📤 결과 전송 중...';
-                    
-                    // 시리얼 전송
-                    if (writer && label !== '알 수 없음') {
-                        await sendToSerial(label);
-                        document.getElementById('status').innerHTML = '✅ 분류 완료 - 모니터링 재개';
-                    } else {
-                        document.getElementById('status').innerHTML = '⚠️ 시리얼 미연결 - 모니터링 재개';
-                    }
-                } else {
-                    throw new Error('분류 서버 오류');
-                }
+                                 // 이미지 전처리 적용
+                 const optimizedCanvas = preprocessImage(canvas);
+                 
+                 document.getElementById('result').innerHTML = '🤖 AI 분석 중...';
+                 document.getElementById('status').innerHTML = '🧠 딥러닝 처리 중...';
+                 
+                 const blob = await new Promise(resolve => optimizedCanvas.toBlob(resolve, 'image/jpeg', 0.8));
+                 
+                 // 공통 분류 함수 사용
+                 await classifyImage(blob);
                 
             } catch (error) {
                 console.error('분류 오류:', error);
@@ -550,20 +525,135 @@
             }
         }
 
-        // 시리얼 데이터 전송
-        async function sendToSerial(label) {
-            if (!writer) return;
-            
-            try {
-                const command = `${label}\n`;
-                const encoder = new TextEncoder();
-                await writer.write(encoder.encode(command));
-                console.log('시리얼 전송:', command.trim());
-                
-            } catch (error) {
-                console.error('시리얼 전송 오류:', error);
-            }
-        }
+                 // 분류 테스트 (수동)
+         async function testClassification() {
+             const video = document.getElementById('video');
+             if (!video || video.videoWidth === 0) {
+                 document.getElementById('result').innerHTML = '❌ 카메라를 먼저 시작해주세요';
+                 return;
+             }
+             
+             document.getElementById('result').innerHTML = '🧪 수동 분류 테스트 중...';
+             document.getElementById('status').innerHTML = '📸 이미지 캡처 중...';
+             
+             // 현재 프레임 캡처
+             const canvas = document.createElement('canvas');
+             canvas.width = video.videoWidth;
+             canvas.height = video.videoHeight;
+             const ctx = canvas.getContext('2d');
+             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+             
+             // 전처리 적용
+             const optimizedCanvas = preprocessImage(canvas);
+             
+             const blob = await new Promise(resolve => optimizedCanvas.toBlob(resolve, 'image/jpeg', 0.8));
+             
+             // 분류 시도
+             await classifyImage(blob);
+         }
+
+         // 이미지 분류 함수 (공통)
+         async function classifyImage(blob) {
+             const formData = new FormData();
+             formData.append('file', blob, 'image.jpg');
+             
+             // 서버 연결 진단
+             document.getElementById('status').innerHTML = '🔍 서버 연결 진단 중...';
+             
+             // 여러 엔드포인트 시도
+             const endpoints = ['/classify', '/predict', '/api/classify', '/api/predict'];
+             let success = false;
+             let result = null;
+             
+             for (const endpoint of endpoints) {
+                 try {
+                     document.getElementById('status').innerHTML = `🔍 서버 연결 시도: ${endpoint}`;
+                     
+                     const response = await fetch(endpoint, {
+                         method: 'POST',
+                         body: formData,
+                         timeout: 10000 // 10초 타임아웃
+                     });
+                     
+                     if (response.ok) {
+                         result = await response.json();
+                         success = true;
+                         document.getElementById('status').innerHTML = `✅ 서버 연결 성공: ${endpoint}`;
+                         break;
+                     } else {
+                         console.log(`${endpoint} 실패: ${response.status} ${response.statusText}`);
+                         document.getElementById('status').innerHTML = `❌ ${endpoint}: ${response.status} ${response.statusText}`;
+                     }
+                 } catch (error) {
+                     console.log(`${endpoint} 연결 실패:`, error.message);
+                     document.getElementById('status').innerHTML = `❌ ${endpoint}: ${error.message}`;
+                     await new Promise(resolve => setTimeout(resolve, 500)); // 0.5초 대기
+                     continue;
+                 }
+             }
+             
+             if (success && result) {
+                 const label = result.label || result.class || result.prediction || '알 수 없음';
+                 const confidence = result.confidence || result.probability || result.score || 0;
+                 
+                 document.getElementById('result').innerHTML = 
+                     `🎯 분류 결과: <span style="color: #4CAF50">${label}</span><br>
+                      <small>신뢰도: ${(confidence * 100).toFixed(1)}%</small>`;
+                 
+                 document.getElementById('status').innerHTML = '📤 결과 전송 중...';
+                 
+                 // 시리얼 전송
+                 if (writer && label !== '알 수 없음') {
+                     await sendToSerial(label);
+                     document.getElementById('status').innerHTML = '✅ 분류 완료';
+                 } else {
+                     document.getElementById('status').innerHTML = '⚠️ 시리얼 미연결';
+                 }
+                 
+                 return { label, confidence };
+             } else {
+                 // 서버가 없으면 데모 모드로 실행
+                 document.getElementById('status').innerHTML = '🔄 데모 모드로 전환 중...';
+                 
+                 await new Promise(resolve => setTimeout(resolve, 1000));
+                 
+                 const demoLabels = ['plastic', 'paper', 'cardboard', 'glass', 'metal', 'trash'];
+                 const randomLabel = demoLabels[Math.floor(Math.random() * demoLabels.length)];
+                 const randomConfidence = 0.7 + Math.random() * 0.3; // 70-100%
+                 
+                 document.getElementById('result').innerHTML = 
+                     `🎯 분류 결과 (데모): <span style="color: #4CAF50">${randomLabel}</span><br>
+                      <small>신뢰도: ${(randomConfidence * 100).toFixed(1)}%</small><br>
+                      <small style="color: #FFC107">⚠️ 분류 서버 미연결 - 데모 모드</small>`;
+                 
+                 document.getElementById('status').innerHTML = '📤 데모 결과 전송 중...';
+                 
+                 // 시리얼 전송 (데모)
+                 if (writer) {
+                     await sendToSerial(randomLabel);
+                     document.getElementById('status').innerHTML = '✅ 데모 분류 완료';
+                 } else {
+                     document.getElementById('status').innerHTML = '⚠️ 시리얼 미연결';
+                 }
+                 
+                 return { label: randomLabel, confidence: randomConfidence };
+             }
+         }
+
+         // 시리얼 데이터 전송
+         async function sendToSerial(label) {
+             if (!writer) return;
+             
+             try {
+                 const command = `${label}\n`;
+                 const encoder = new TextEncoder();
+                 await writer.write(encoder.encode(command));
+                 console.log('시리얼 전송:', command.trim());
+                 
+             } catch (error) {
+                 console.error('시리얼 전송 오류:', error);
+             }
+         }
 
         // 정리 함수
         window.addEventListener('beforeunload', () => {
