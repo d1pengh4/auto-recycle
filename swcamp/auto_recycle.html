@@ -110,9 +110,14 @@
         
         // 변화 감지
         if (!isProcessing && detectFrameChange(currentImageData, previousFrame)) {
-            console.log('프레임 변화 감지됨 - 분류 시작');
-            document.getElementById('result').innerText = '쓰레기 감지됨 - 분석 중...';
-            captureAndClassify();
+            console.log('프레임 변화 감지됨 - 1초 후 분류 시작');
+            document.getElementById('result').innerText = '쓰레기 감지됨 - 1초 후 분석 시작...';
+            isProcessing = true; // 중복 감지 방지
+            
+            // 1초 후에 분류 실행
+            setTimeout(() => {
+                captureAndClassify();
+            }, 1000);
         }
         
         // 현재 프레임을 이전 프레임으로 저장
@@ -134,8 +139,7 @@
     }
 
     async function captureAndClassify() {
-      if (isProcessing) return; // 이미 처리 중이면 중복 실행 방지
-      isProcessing = true;
+      // isProcessing은 이미 monitorFrameChanges에서 설정됨
       
       const video = document.getElementById('video');
       if (video.videoWidth === 0) {
