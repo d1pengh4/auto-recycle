@@ -117,6 +117,7 @@
             <button onclick="startCamera()">📷 카메라 시작</button>
             <button onclick="stopCamera()">⏹️ 카메라 중지</button>
             <button onclick="checkServer()">🔍 서버 상태 확인</button>
+            <button onclick="testServerWithImage()">📤 서버 POST 테스트</button>
             <button onclick="testClassification()">🧪 분류 테스트</button>
             <button onclick="toggleAuto()" id="autoBtn">🔄 자동 분류 시작</button>
             <button onclick="connectSerial()">🔌 시리얼 연결</button>
@@ -579,11 +580,21 @@
                      if (response.status === 200 || response.status === 405) { // GET이 안되면 405 Method Not Allowed
                          serverFound = true;
                          workingEndpoint = endpoint;
-                         document.getElementById('result').innerHTML = 
-                             `✅ 서버 연결 성공!<br>
-                              <small>엔드포인트: ${endpoint}</small><br>
-                              <small>상태: ${response.status} ${response.statusText}</small>`;
-                         document.getElementById('status').innerHTML = '✅ 서버가 정상 작동 중입니다';
+                         
+                         if (response.status === 405) {
+                             document.getElementById('result').innerHTML = 
+                                 `✅ 서버 연결 성공!<br>
+                                  <small>엔드포인트: ${endpoint}</small><br>
+                                  <small>상태: POST 방식 지원 확인됨</small><br>
+                                  <small style="color: #4CAF50;">🎯 분류 테스트 버튼으로 실제 테스트 가능</small>`;
+                             document.getElementById('status').innerHTML = '✅ 서버가 정상 작동 중 - POST 방식 준비됨';
+                         } else {
+                             document.getElementById('result').innerHTML = 
+                                 `✅ 서버 연결 성공!<br>
+                                  <small>엔드포인트: ${endpoint}</small><br>
+                                  <small>상태: ${response.status} ${response.statusText}</small>`;
+                             document.getElementById('status').innerHTML = '✅ 서버가 정상 작동 중입니다';
+                         }
                          break;
                      }
                  } catch (error) {
@@ -600,6 +611,87 @@
                       <small>• CORS 설정이 되어있는지 확인하세요</small>`;
                  document.getElementById('status').innerHTML = '❌ 서버 연결 실패 - 데모 모드로 작동합니다';
              }
+         }
+
+         // 서버 POST 방식 테스트 (테스트 이미지 사용)
+         async function testServerWithImage() {
+             document.getElementById('result').innerHTML = '📤 서버 POST 방식 테스트 중...';
+             document.getElementById('status').innerHTML = '🎨 테스트 이미지 생성 중...';
+             
+             // 테스트용 이미지 생성 (100x100 빨간색 사각형)
+             const canvas = document.createElement('canvas');
+             canvas.width = 100;
+             canvas.height = 100;
+             const ctx = canvas.getContext('2d');
+             ctx.fillStyle = '#FF0000';
+             ctx.fillRect(0, 0, 100, 100);
+             ctx.fillStyle = '#FFFFFF';
+             ctx.font = '12px Arial';
+             ctx.fillText('TEST', 35, 55);
+             
+             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+             
+             document.getElementById('status').innerHTML = '📤 서버로 테스트 이미지 전송 중...';
+             
+             // 서버 POST 테스트
+             const endpoints = [
+                 'http://localhost:5005/classify',
+                 'http://localhost:5005/predict'
+             ];
+             
+             for (const endpoint of endpoints) {
+                 try {
+                     document.getElementById('status').innerHTML = `📤 POST 테스트: ${endpoint}`;
+                     
+                     const formData = new FormData();
+                     formData.append('file', blob, 'test.jpg');
+                     
+                     const controller = new AbortController();
+                     const timeoutId = setTimeout(() => controller.abort(), 10000);
+                     
+                     const response = await fetch(endpoint, {
+                         method: 'POST',
+                         body: formData,
+                         signal: controller.signal,
+                         mode: 'cors',
+                         headers: {
+                             'Accept': 'application/json'
+                         }
+                     });
+                     
+                     clearTimeout(timeoutId);
+                     
+                     if (response.ok) {
+                         const result = await response.json();
+                         const label = result.label || result.class || result.prediction || '응답 확인됨';
+                         const confidence = result.confidence || result.probability || result.score || 0;
+                         
+                         document.getElementById('result').innerHTML = 
+                             `✅ 서버 POST 테스트 성공!<br>
+                              <small>엔드포인트: ${endpoint}</small><br>
+                              <small>응답: ${JSON.stringify(result)}</small><br>
+                              <small style="color: #4CAF50;">🎯 서버가 정상적으로 작동합니다!</small>`;
+                         document.getElementById('status').innerHTML = '✅ POST 테스트 성공 - 서버 연동 완료';
+                         return;
+                     } else {
+                         document.getElementById('status').innerHTML = `❌ ${endpoint}: ${response.status} ${response.statusText}`;
+                         const errorText = await response.text();
+                         console.log('서버 응답 오류:', errorText);
+                     }
+                 } catch (error) {
+                     console.log(`${endpoint} POST 테스트 실패:`, error.message);
+                     document.getElementById('status').innerHTML = `❌ ${endpoint}: ${error.message}`;
+                     continue;
+                 }
+             }
+             
+             document.getElementById('result').innerHTML = 
+                 `❌ 서버 POST 테스트 실패<br>
+                  <small>• 서버가 POST /classify 또는 /predict를 지원하는지 확인</small><br>
+                  <small>• 서버가 'file' 필드로 이미지를 받는지 확인</small><br>
+                  <small>• JSON 형태로 응답하는지 확인</small><br>
+                  <small>• CORS 설정이 되어있는지 확인</small>`;
+             document.getElementById('status').innerHTML = '❌ POST 테스트 실패 - 서버 설정 확인 필요';
          }
 
          // 분류 테스트 (수동)
