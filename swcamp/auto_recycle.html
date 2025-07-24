@@ -111,6 +111,9 @@
         <video id="video" autoplay muted playsinline></video>
         
         <div class="controls">
+            <select id="cameraSelect" style="padding: 10px; margin: 10px; border-radius: 8px; background: #444; color: white; border: 2px solid #4CAF50; font-size: 14px;">
+                <option value="">카메라를 선택하세요...</option>
+            </select>
             <button onclick="startCamera()">📷 카메라 시작</button>
             <button onclick="toggleAuto()" id="autoBtn">🔄 자동 분류 시작</button>
             <button onclick="connectSerial()">🔌 시리얼 연결</button>
@@ -148,16 +151,55 @@
             colorSpaceOptimization: true
         };
 
+        // 카메라 목록 업데이트
+        async function updateCameraList() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                const select = document.getElementById('cameraSelect');
+                
+                // 기존 옵션 제거 (첫 번째 기본 옵션 제외)
+                while (select.children.length > 1) {
+                    select.removeChild(select.lastChild);
+                }
+                
+                videoDevices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `카메라 ${index + 1}`;
+                    select.appendChild(option);
+                });
+                
+                document.getElementById('status').innerHTML = `📷 ${videoDevices.length}개의 카메라 발견됨`;
+                
+            } catch (error) {
+                console.error('카메라 목록 오류:', error);
+                document.getElementById('status').innerHTML = '❌ 카메라 목록 로드 실패';
+            }
+        }
+
         // 카메라 시작
         async function startCamera() {
             try {
+                // 기존 스트림 정리
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
+                
                 document.getElementById('status').innerHTML = '📷 카메라 초기화 중...';
+                
+                const selectedDeviceId = document.getElementById('cameraSelect').value;
+                
+                if (!selectedDeviceId) {
+                    document.getElementById('status').innerHTML = '⚠️ 카메라를 먼저 선택해주세요';
+                    return;
+                }
                 
                 const constraints = {
                     video: {
+                        deviceId: { exact: selectedDeviceId },
                         width: { ideal: 640 },
-                        height: { ideal: 480 },
-                        facingMode: 'environment'
+                        height: { ideal: 480 }
                     }
                 };
                 
@@ -167,7 +209,8 @@
                 
                 video.onloadedmetadata = () => {
                     video.play();
-                    document.getElementById('status').innerHTML = '✅ 카메라 준비 완료';
+                    const selectedOption = document.getElementById('cameraSelect').selectedOptions[0];
+                    document.getElementById('status').innerHTML = `✅ ${selectedOption.text} 준비 완료`;
                     document.getElementById('result').innerHTML = '카메라가 준비되었습니다';
                 };
                 
@@ -481,7 +524,7 @@
         // 자동 시작 (선택사항)
         window.addEventListener('load', () => {
             setTimeout(() => {
-                startCamera();
+                updateCameraList();
             }, 1000);
         });
     </script>
