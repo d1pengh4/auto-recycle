@@ -3,1436 +3,487 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 AI 슈퍼 자동 분리수거 시스템 v3.0</title>
+    <title>🤖 AI 자동 분리수거 시스템</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
+            background: #1a1a1a;
+            color: #fff;
+            text-align: center;
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 800px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
+            background: #2d2d2d;
+            border-radius: 15px;
             padding: 30px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         
-        .header {
-            text-align: center;
+        h1 {
+            color: #4CAF50;
             margin-bottom: 30px;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-        
-        .video-section {
-            position: relative;
+            font-size: 2.5em;
         }
         
         #video {
             width: 100%;
             max-width: 640px;
-            height: auto;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            height: 480px;
+            border: 3px solid #4CAF50;
+            border-radius: 10px;
             background: #000;
+            margin: 20px 0;
         }
         
-        .overlay-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-            border-radius: 15px;
+        .controls {
+            margin: 20px 0;
         }
         
-        .controls-section {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        .control-group {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 15px;
-            border-left: 5px solid #007bff;
-        }
-        
-        .control-group h3 {
-            margin: 0 0 15px 0;
-            color: #495057;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .btn {
-            padding: 12px 24px;
+        button {
+            background: #4CAF50;
+            color: white;
             border: none;
+            padding: 15px 30px;
+            margin: 10px;
             border-radius: 8px;
             cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            margin: 5px;
-            font-size: 14px;
-        }
-        
-        .btn-primary { background: #007bff; color: white; }
-        .btn-success { background: #28a745; color: white; }
-        .btn-danger { background: #dc3545; color: white; }
-        .btn-info { background: #17a2b8; color: white; }
-        .btn-warning { background: #ffc107; color: black; }
-        .btn-secondary { background: #6c757d; color: white; }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        
-        .status-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-        
-        .status-card {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #28a745;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .status-card h4 {
-            margin: 0 0 10px 0;
-            color: #495057;
-            font-size: 14px;
-        }
-        
-        .status-value {
-            font-size: 18px;
-            font-weight: bold;
-            color: #28a745;
-        }
-        
-        .slider-container {
-            margin: 10px 0;
-        }
-        
-        .slider-container label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-        
-        .slider {
-            width: 100%;
-            margin: 5px 0;
-        }
-        
-        .advanced-controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
-        }
-        
-        .result-display {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 15px;
-            margin: 20px 0;
-            border-left: 5px solid #28a745;
             font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #result {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            background: #333;
             min-height: 60px;
             display: flex;
             align-items: center;
+            justify-content: center;
         }
         
-        .performance-monitor {
-            background: #e9ecef;
+        .status {
+            background: #444;
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 8px;
             margin: 10px 0;
-            font-family: 'Consolas', monospace;
-            font-size: 12px;
-            max-height: 200px;
-            overflow-y: auto;
+            font-size: 14px;
         }
         
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-            margin: 0 10px;
+        .processing {
+            color: #FFC107;
         }
         
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
+        .detected {
+            color: #4CAF50;
         }
         
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
+        .waiting {
+            color: #2196F3;
         }
         
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        
-        input:checked + .toggle-slider {
-            background-color: #2196F3;
-        }
-        
-        input:checked + .toggle-slider:before {
-            transform: translateX(26px);
-        }
-        
-        @media (max-width: 768px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-            .advanced-controls {
-                grid-template-columns: 1fr;
-            }
+        .error {
+            color: #f44336;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🤖 AI 슈퍼 자동 분리수거 시스템 v3.0</h1>
-            <p>모든 최적화 기법이 적용된 차세대 쓰레기 분류 시스템</p>
+        <h1>🤖 AI 자동 분리수거 시스템</h1>
+        
+        <video id="video" autoplay muted playsinline></video>
+        
+        <div class="controls">
+            <button onclick="startCamera()">📷 카메라 시작</button>
+            <button onclick="toggleAuto()" id="autoBtn">🔄 자동 분류 시작</button>
+            <button onclick="connectSerial()">🔌 시리얼 연결</button>
         </div>
-
-        <div class="main-grid">
-            <div class="video-section">
-                <div style="position: relative;">
-                    <video id="video" autoplay muted></video>
-                    <canvas id="overlayCanvas" class="overlay-canvas"></canvas>
-                    <canvas id="backgroundCanvas" style="display: none;"></canvas>
-                    <canvas id="foregroundCanvas" style="display: none;"></canvas>
-                    <canvas id="edgeCanvas" style="display: none;"></canvas>
-                    <canvas id="contourCanvas" style="display: none;"></canvas>
-                </div>
-                
-                <div class="control-group">
-                    <h3>📹 카메라 설정</h3>
-                    <select id="cameraSelect" class="form-control" style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px;"></select>
-                    <button onclick="startCamera()" class="btn btn-primary">카메라 시작</button>
-                    <button onclick="stopCamera()" class="btn btn-secondary">카메라 중지</button>
-                </div>
-            </div>
-
-            <div class="controls-section">
-                <div class="control-group">
-                    <h3>🎯 메인 컨트롤</h3>
-                    <button id="autoButton" onclick="toggleAuto()" class="btn btn-success">자동 분류 시작</button>
-                    <button onclick="manualClassify()" class="btn btn-info">수동 분류</button>
-                    <button onclick="connectSerial()" class="btn btn-warning">아두이노 연결</button>
-                    <div id="status" style="margin-top: 10px; font-weight: bold;">시리얼 연결 대기 중</div>
-                </div>
-
-                <div class="control-group">
-                    <h3>🧠 AI 최적화 설정</h3>
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <label>배경 차분 모드</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="backgroundSubtraction" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <label>엣지 검출 강화</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="edgeDetection" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <label>컨투어 분석</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="contourAnalysis" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <label>앙상블 분류</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="ensembleMode" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="advanced-controls">
-            <div class="control-group">
-                <h3>🔧 고급 설정</h3>
-                <div class="slider-container">
-                    <label>감지 민감도: <span id="sensitivityValue">5</span>%</label>
-                    <input type="range" id="sensitivity" class="slider" min="1" max="20" value="5" oninput="updateSensitivity(this.value)">
-                </div>
-                <div class="slider-container">
-                    <label>배경 학습률: <span id="learningRateValue">0.1</span></label>
-                    <input type="range" id="learningRate" class="slider" min="0.01" max="0.5" step="0.01" value="0.1" oninput="updateLearningRate(this.value)">
-                </div>
-                <div class="slider-container">
-                    <label>엣지 임계값: <span id="edgeThresholdValue">100</span></label>
-                    <input type="range" id="edgeThreshold" class="slider" min="50" max="200" value="100" oninput="updateEdgeThreshold(this.value)">
-                </div>
-                <div class="slider-container">
-                    <label>컨투어 최소 크기: <span id="contourSizeValue">500</span></label>
-                    <input type="range" id="contourSize" class="slider" min="100" max="2000" value="500" oninput="updateContourSize(this.value)">
-                </div>
-            </div>
-
-            <div class="control-group">
-                <h3>🎨 이미지 전처리</h3>
-                <div class="slider-container">
-                    <label>밝기 조정: <span id="brightnessValue">0</span></label>
-                    <input type="range" id="brightness" class="slider" min="-50" max="50" value="0" oninput="updateBrightness(this.value)">
-                </div>
-                <div class="slider-container">
-                    <label>대비 조정: <span id="contrastValue">1.0</span></label>
-                    <input type="range" id="contrast" class="slider" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateContrast(this.value)">
-                </div>
-                <div class="slider-container">
-                    <label>채도 조정: <span id="saturationValue">1.0</span></label>
-                    <input type="range" id="saturation" class="slider" min="0.0" max="2.0" step="0.1" value="1.0" oninput="updateSaturation(this.value)">
-                </div>
-                <div class="slider-container">
-                    <label>가우시안 블러: <span id="blurValue">0</span></label>
-                    <input type="range" id="blur" class="slider" min="0" max="10" value="0" oninput="updateBlur(this.value)">
-                </div>
-            </div>
-
-            <div class="control-group">
-                <h3>📊 색상 공간 분석</h3>
-                <button onclick="toggleColorSpace('RGB')" class="btn btn-info">RGB 모드</button>
-                <button onclick="toggleColorSpace('HSV')" class="btn btn-info">HSV 모드</button>
-                <button onclick="toggleColorSpace('LAB')" class="btn btn-info">LAB 모드</button>
-                <button onclick="toggleColorSpace('YUV')" class="btn btn-info">YUV 모드</button>
-                <div id="colorSpaceInfo" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
-            </div>
-
-            <div class="control-group">
-                <h3>🔍 다중 스케일 분석</h3>
-                <button onclick="analyzeMultiScale()" class="btn btn-primary">다중 스케일 분석</button>
-                <button onclick="pyramidAnalysis()" class="btn btn-primary">피라미드 분석</button>
-                <button onclick="waveletAnalysis()" class="btn btn-primary">웨이블릿 분석</button>
-                <button onclick="morphologyAnalysis()" class="btn btn-primary">모폴로지 분석</button>
-            </div>
-        </div>
-
-        <div class="status-grid">
-            <div class="status-card">
-                <h4>🎯 감지 정확도</h4>
-                <div class="status-value" id="accuracy">0%</div>
-            </div>
-            <div class="status-card">
-                <h4>⚡ 처리 속도</h4>
-                <div class="status-value" id="fps">0 FPS</div>
-            </div>
-            <div class="status-card">
-                <h4>🔄 처리된 프레임</h4>
-                <div class="status-value" id="frameCount">0</div>
-            </div>
-            <div class="status-card">
-                <h4>🎨 활성 필터</h4>
-                <div class="status-value" id="activeFilters">기본</div>
-            </div>
-            <div class="status-card">
-                <h4>🧠 AI 모드</h4>
-                <div class="status-value" id="aiMode">대기</div>
-            </div>
-            <div class="status-card">
-                <h4>📈 성능 점수</h4>
-                <div class="status-value" id="performanceScore">100</div>
-            </div>
-        </div>
-
-        <div class="result-display" id="result">
-            🤖 AI 슈퍼 자동 분리수거 시스템이 준비되었습니다. 모든 최적화 기법이 활성화되어 있습니다!
-        </div>
-
-        <div class="control-group">
-            <h3>📈 실시간 성능 모니터</h3>
-            <div class="performance-monitor" id="performanceLog">
-                [시스템 초기화] 모든 AI 최적화 모듈 로딩 완료<br>
-                [배경 학습] 적응형 배경 모델 준비 완료<br>
-                [엣지 검출] Canny 엣지 검출기 활성화<br>
-                [컨투어 분석] 적응형 컨투어 분석기 준비<br>
-                [앙상블 AI] 다중 분류기 앙상블 모드 활성화<br>
-                [성능 최적화] 모든 시스템 최적화 완료 ✅<br>
-            </div>
-            <button onclick="clearLog()" class="btn btn-secondary">로그 지우기</button>
-            <button onclick="exportLog()" class="btn btn-info">로그 내보내기</button>
-        </div>
-
-        <div class="control-group">
-            <h3>🛠️ 시스템 관리</h3>
-            <button onclick="relearnBackground()" class="btn btn-warning">배경 재학습</button>
-            <button onclick="calibrateSystem()" class="btn btn-info">시스템 캘리브레이션</button>
-            <button onclick="resetAllSettings()" class="btn btn-danger">모든 설정 초기화</button>
-            <button onclick="saveSettings()" class="btn btn-success">설정 저장</button>
-            <button onclick="loadSettings()" class="btn btn-primary">설정 불러오기</button>
-        </div>
+        
+        <div id="result">시스템 준비 중...</div>
+        <div id="status" class="status">카메라를 시작해주세요</div>
     </div>
 
     <script>
-    // ===== 전역 변수 =====
-    let auto = false, intervalId = null, port = null, writer = null, lastLabel = '', lastSend = 0;
-    let currentStream = null;
-    let previousFrame = null;
-    let changeThreshold = 0.05;
-    let isProcessing = false;
-    
-    // AI 최적화 관련 변수들
-    let backgroundModel = null;
-    let isBackgroundLearning = false;
-    let backgroundFrameCount = 0;
-    let backgroundLearningFrames = 30;
-    let useBackgroundSubtraction = true;
-    let learningRate = 0.1;
-    
-    // 성능 모니터링
-    let frameCount = 0;
-    let startTime = Date.now();
-    let lastFrameTime = Date.now();
-    let accuracyHistory = [];
-    let performanceScore = 100;
-    
-    // 이미지 처리 설정
-    let brightness = 0;
-    let contrast = 1.0;
-    let saturation = 1.0;
-    let blurAmount = 0;
-    let edgeThreshold = 100;
-    let contourMinSize = 500;
-    let currentColorSpace = 'RGB';
-    
-    // AI 모드 설정
-    let useEdgeDetection = true;
-    let useContourAnalysis = true;
-    let useEnsembleMode = true;
-    
-    // ===== 초기화 함수 =====
-    async function updateCameraList() {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        const select = document.getElementById('cameraSelect');
-        select.innerHTML = '';
-        videoDevices.forEach((device, idx) => {
-            const option = document.createElement('option');
-            option.value = device.deviceId;
-            option.text = device.label || `Camera ${idx + 1}`;
-            select.appendChild(option);
-        });
-        logMessage(`📹 ${videoDevices.length}개의 카메라 감지됨`);
-    }
+        // 전역 변수들
+        let auto = false;
+        let intervalId = null;
+        let port = null;
+        let writer = null;
+        let currentStream = null;
+        let isProcessing = false;
+        
+        // 배경 학습 및 최적화 변수들
+        let backgroundModel = null;
+        let backgroundFrameCount = 0;
+        let backgroundLearningComplete = false;
+        let previousFrame = null;
+        let frameBuffer = [];
+        let changeThreshold = 0.03; // 3% 변화 감지
+        
+        // 자동 최적화 설정
+        const AUTO_CONFIG = {
+            backgroundLearningFrames: 50,
+            monitoringInterval: 300,  // 0.3초마다 체크
+            classificationDelay: 1000, // 1초 대기 후 분류
+            stabilizationFrames: 5,
+            noiseReduction: true,
+            edgeEnhancement: true,
+            colorSpaceOptimization: true
+        };
 
-    async function startCamera() {
-        try {
-            const selectedDeviceId = document.getElementById('cameraSelect').value;
-            const constraints = {
-                video: {
-                    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    frameRate: { ideal: 30 }
-                }
-            };
-
-            currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-            const video = document.getElementById('video');
-            video.srcObject = currentStream;
-            
-            // 오버레이 캔버스 설정
-            video.addEventListener('loadedmetadata', () => {
-                setupOverlayCanvas();
-                if (!backgroundModel) {
-                    startBackgroundLearning();
-                }
-            });
-            
-            logMessage('📹 카메라 시작됨 - 고해상도 모드 활성화');
-        } catch (error) {
-            console.error('카메라 접근 오류:', error);
-            logMessage('❌ 카메라 접근 실패: ' + error.message);
-        }
-    }
-
-    function stopCamera() {
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-            currentStream = null;
-            logMessage('📹 카메라 중지됨');
-        }
-    }
-
-    function setupOverlayCanvas() {
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('overlayCanvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.style.width = video.offsetWidth + 'px';
-        canvas.style.height = video.offsetHeight + 'px';
-    }
-
-    // ===== 배경 학습 및 차분 =====
-    function startBackgroundLearning() {
-        isBackgroundLearning = true;
-        backgroundFrameCount = 0;
-        logMessage('🧠 배경 학습 시작 - 안정된 상태 유지 필요');
-        updateAIMode('배경 학습');
-        
-        const learningInterval = setInterval(() => {
-            const video = document.getElementById('video');
-            if (video.videoWidth === 0) return;
-            
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            
-            // 이미지 전처리 적용
-            ctx.filter = `brightness(${100 + brightness}%) contrast(${contrast * 100}%) saturate(${saturation * 100}%)`;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            
-            if (!backgroundModel) {
-                backgroundModel = new ImageData(
-                    new Uint8ClampedArray(currentImageData.data),
-                    currentImageData.width,
-                    currentImageData.height
-                );
-            } else {
-                updateBackgroundModel(currentImageData);
-            }
-            
-            backgroundFrameCount++;
-            
-            if (backgroundFrameCount >= backgroundLearningFrames) {
-                isBackgroundLearning = false;
-                useBackgroundSubtraction = true;
-                clearInterval(learningInterval);
-                logMessage('✅ 배경 학습 완료 - 고급 AI 모드 활성화');
-                updateAIMode('AI 감지');
-            }
-        }, 100);
-    }
-
-    function updateBackgroundModel(currentFrame) {
-        for (let i = 0; i < backgroundModel.data.length; i += 4) {
-            backgroundModel.data[i] = backgroundModel.data[i] * (1 - learningRate) + currentFrame.data[i] * learningRate;
-            backgroundModel.data[i + 1] = backgroundModel.data[i + 1] * (1 - learningRate) + currentFrame.data[i + 1] * learningRate;
-            backgroundModel.data[i + 2] = backgroundModel.data[i + 2] * (1 - learningRate) + currentFrame.data[i + 2] * learningRate;
-        }
-    }
-
-    // ===== 고급 이미지 처리 =====
-    function applyImageProcessing(imageData) {
-        const data = imageData.data;
-        
-        // 밝기, 대비, 채도 조정
-        for (let i = 0; i < data.length; i += 4) {
-            // RGB to HSV 변환 후 처리
-            let r = data[i] / 255;
-            let g = data[i + 1] / 255;
-            let b = data[i + 2] / 255;
-            
-            // HSV 변환
-            let max = Math.max(r, g, b);
-            let min = Math.min(r, g, b);
-            let h, s, v = max;
-            let d = max - min;
-            s = max === 0 ? 0 : d / max;
-            
-            if (max === min) {
-                h = 0;
-            } else {
-                switch (max) {
-                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                    case g: h = (b - r) / d + 2; break;
-                    case b: h = (r - g) / d + 4; break;
-                }
-                h /= 6;
-            }
-            
-            // 채도 조정
-            s *= saturation;
-            s = Math.min(1, Math.max(0, s));
-            
-            // 밝기 조정
-            v += brightness / 100;
-            v = Math.min(1, Math.max(0, v));
-            
-            // HSV to RGB 변환
-            let c = v * s;
-            let x = c * (1 - Math.abs((h * 6) % 2 - 1));
-            let m = v - c;
-            
-            let rNew, gNew, bNew;
-            if (h < 1/6) { rNew = c; gNew = x; bNew = 0; }
-            else if (h < 2/6) { rNew = x; gNew = c; bNew = 0; }
-            else if (h < 3/6) { rNew = 0; gNew = c; bNew = x; }
-            else if (h < 4/6) { rNew = 0; gNew = x; bNew = c; }
-            else if (h < 5/6) { rNew = x; gNew = 0; bNew = c; }
-            else { rNew = c; gNew = 0; bNew = x; }
-            
-            // 대비 적용
-            data[i] = Math.min(255, Math.max(0, ((rNew + m) * 255 - 128) * contrast + 128));
-            data[i + 1] = Math.min(255, Math.max(0, ((gNew + m) * 255 - 128) * contrast + 128));
-            data[i + 2] = Math.min(255, Math.max(0, ((bNew + m) * 255 - 128) * contrast + 128));
-        }
-        
-        return imageData;
-    }
-
-    function applyEdgeDetection(imageData) {
-        if (!useEdgeDetection) return imageData;
-        
-        const data = imageData.data;
-        const width = imageData.width;
-        const height = imageData.height;
-        const result = new ImageData(width, height);
-        
-        // Sobel 엣지 검출
-        const sobelX = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
-        const sobelY = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]];
-        
-        for (let y = 1; y < height - 1; y++) {
-            for (let x = 1; x < width - 1; x++) {
-                let gx = 0, gy = 0;
-                
-                for (let ky = -1; ky <= 1; ky++) {
-                    for (let kx = -1; kx <= 1; kx++) {
-                        const idx = ((y + ky) * width + (x + kx)) * 4;
-                        const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
-                        gx += gray * sobelX[ky + 1][kx + 1];
-                        gy += gray * sobelY[ky + 1][kx + 1];
-                    }
-                }
-                
-                const magnitude = Math.sqrt(gx * gx + gy * gy);
-                const idx = (y * width + x) * 4;
-                
-                if (magnitude > edgeThreshold) {
-                    result.data[idx] = 255;
-                    result.data[idx + 1] = 255;
-                    result.data[idx + 2] = 255;
-                } else {
-                    result.data[idx] = data[idx];
-                    result.data[idx + 1] = data[idx + 1];
-                    result.data[idx + 2] = data[idx + 2];
-                }
-                result.data[idx + 3] = 255;
-            }
-        }
-        
-        return result;
-    }
-
-    function extractForeground(currentFrame) {
-        if (!backgroundModel || !useBackgroundSubtraction) return null;
-        
-        const canvas = document.createElement('canvas');
-        canvas.width = currentFrame.width;
-        canvas.height = currentFrame.height;
-        const ctx = canvas.getContext('2d');
-        
-        const foregroundData = new ImageData(canvas.width, canvas.height);
-        const threshold = 30 + (changeThreshold * 100);
-        
-        for (let i = 0; i < currentFrame.data.length; i += 4) {
-            const diffR = Math.abs(currentFrame.data[i] - backgroundModel.data[i]);
-            const diffG = Math.abs(currentFrame.data[i + 1] - backgroundModel.data[i + 1]);
-            const diffB = Math.abs(currentFrame.data[i + 2] - backgroundModel.data[i + 2]);
-            
-            const totalDiff = (diffR + diffG + diffB) / 3;
-            
-            if (totalDiff > threshold) {
-                foregroundData.data[i] = currentFrame.data[i];
-                foregroundData.data[i + 1] = currentFrame.data[i + 1];
-                foregroundData.data[i + 2] = currentFrame.data[i + 2];
-                foregroundData.data[i + 3] = 255;
-            } else {
-                foregroundData.data[i] = 0;
-                foregroundData.data[i + 1] = 0;
-                foregroundData.data[i + 2] = 0;
-                foregroundData.data[i + 3] = 0;
-            }
-        }
-        
-        return foregroundData;
-    }
-
-    function analyzeContours(imageData) {
-        if (!useContourAnalysis) return [];
-        
-        // 간단한 컨투어 분석 (실제로는 더 복잡한 알고리즘 필요)
-        const contours = [];
-        const visited = new Array(imageData.width * imageData.height).fill(false);
-        
-        for (let y = 0; y < imageData.height; y++) {
-            for (let x = 0; x < imageData.width; x++) {
-                const idx = y * imageData.width + x;
-                if (!visited[idx] && imageData.data[idx * 4 + 3] > 0) {
-                    const contour = floodFill(imageData, x, y, visited);
-                    if (contour.length > contourMinSize) {
-                        contours.push(contour);
-                    }
-                }
-            }
-        }
-        
-        return contours;
-    }
-
-    function floodFill(imageData, startX, startY, visited) {
-        const stack = [{x: startX, y: startY}];
-        const contour = [];
-        
-        while (stack.length > 0) {
-            const {x, y} = stack.pop();
-            const idx = y * imageData.width + x;
-            
-            if (x < 0 || x >= imageData.width || y < 0 || y >= imageData.height || visited[idx]) {
-                continue;
-            }
-            
-            if (imageData.data[idx * 4 + 3] === 0) {
-                continue;
-            }
-            
-            visited[idx] = true;
-            contour.push({x, y});
-            
-            stack.push({x: x + 1, y});
-            stack.push({x: x - 1, y});
-            stack.push({x, y: y + 1});
-            stack.push({x, y: y - 1});
-        }
-        
-        return contour;
-    }
-
-    // ===== 고급 분석 기법 =====
-    function analyzeMultiScale() {
-        logMessage('🔍 다중 스케일 분석 시작');
-        const video = document.getElementById('video');
-        const scales = [0.5, 0.75, 1.0, 1.25, 1.5];
-        
-        scales.forEach(scale => {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth * scale;
-            canvas.height = video.videoHeight * scale;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            logMessage(`📏 스케일 ${scale}x 분석 완료`);
-        });
-        
-        updatePerformanceScore(5);
-    }
-
-    function pyramidAnalysis() {
-        logMessage('🔺 이미지 피라미드 분석 시작');
-        const video = document.getElementById('video');
-        let currentScale = 1.0;
-        
-        while (currentScale > 0.1) {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth * currentScale;
-            canvas.height = video.videoHeight * currentScale;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            currentScale *= 0.5;
-        }
-        
-        logMessage('✅ 피라미드 분석 완료');
-        updatePerformanceScore(3);
-    }
-
-    function waveletAnalysis() {
-        logMessage('🌊 웨이블릿 변환 분석 시작');
-        // 간단한 웨이블릿 변환 시뮬레이션
-        setTimeout(() => {
-            logMessage('✅ 웨이블릿 분석 완료 - 주파수 성분 분석됨');
-            updatePerformanceScore(4);
-        }, 1000);
-    }
-
-    function morphologyAnalysis() {
-        logMessage('🔬 모폴로지 연산 분석 시작');
-        // 모폴로지 연산 (침식, 팽창, 열림, 닫힘)
-        const operations = ['침식', '팽창', '열림', '닫힘'];
-        operations.forEach((op, idx) => {
-            setTimeout(() => {
-                logMessage(`🔬 ${op} 연산 완료`);
-            }, idx * 200);
-        });
-        
-        setTimeout(() => {
-            logMessage('✅ 모든 모폴로지 연산 완료');
-            updatePerformanceScore(6);
-        }, 1000);
-    }
-
-    // ===== 프레임 처리 및 감지 =====
-    function detectFrameChange(currentImageData, previousImageData) {
-        if (!previousImageData) return false;
-        
-        // 이미지 전처리 적용
-        const processedCurrent = applyImageProcessing(new ImageData(
-            new Uint8ClampedArray(currentImageData.data),
-            currentImageData.width,
-            currentImageData.height
-        ));
-        
-        // 엣지 검출 적용
-        const edgeProcessed = applyEdgeDetection(processedCurrent);
-        
-        if (useBackgroundSubtraction) {
-            const foreground = extractForeground(edgeProcessed);
-            if (!foreground) return false;
-            
-            // 컨투어 분석
-            const contours = analyzeContours(foreground);
-            
-            let foregroundPixels = 0;
-            const totalPixels = foreground.width * foreground.height;
-            
-            for (let i = 3; i < foreground.data.length; i += 4) {
-                if (foreground.data[i] > 0) {
-                    foregroundPixels++;
-                }
-            }
-            
-            const foregroundRatio = foregroundPixels / totalPixels;
-            const contourBonus = contours.length > 0 ? 0.01 : 0;
-            
-            logMessage(`🎯 전경 비율: ${(foregroundRatio * 100).toFixed(2)}%, 컨투어: ${contours.length}개`);
-            
-            // 동적 임계값 조정
-            const dynamicThreshold = changeThreshold + contourBonus;
-            return foregroundRatio > dynamicThreshold;
-        }
-        
-        // 기본 프레임 차분
-        const totalPixels = currentImageData.width * currentImageData.height;
-        let changedPixels = 0;
-        const threshold = 30;
-
-        for (let i = 0; i < currentImageData.data.length; i += 4) {
-            const rDiff = Math.abs(currentImageData.data[i] - previousImageData.data[i]);
-            const gDiff = Math.abs(currentImageData.data[i + 1] - previousImageData.data[i + 1]);
-            const bDiff = Math.abs(currentImageData.data[i + 2] - previousImageData.data[i + 2]);
-            
-            if (rDiff + gDiff + bDiff > threshold) {
-                changedPixels++;
-            }
-        }
-        
-        const changeRatio = changedPixels / totalPixels;
-        return changeRatio > changeThreshold;
-    }
-
-    function monitorFrameChanges() {
-        const video = document.getElementById('video');
-        if (video.videoWidth === 0) return;
-        
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        
-        // 성능 모니터링
-        frameCount++;
-        updateFPS();
-        
-        // 배경 학습 중이 아닐 때만 변화 감지
-        if (!isBackgroundLearning && !isProcessing && detectFrameChange(currentImageData, previousFrame)) {
-            const detectionMethods = [];
-            if (useBackgroundSubtraction) detectionMethods.push('배경차분');
-            if (useEdgeDetection) detectionMethods.push('엣지검출');
-            if (useContourAnalysis) detectionMethods.push('컨투어분석');
-            if (useEnsembleMode) detectionMethods.push('앙상블AI');
-            
-            const methodString = detectionMethods.join('+');
-            logMessage(`🎯 ${methodString} 모드로 쓰레기 감지 - 1초 후 분석`);
-            
-            isProcessing = true;
-            setTimeout(() => {
-                captureAndClassify();
-            }, 1000);
-        }
-        
-        previousFrame = currentImageData;
-        
-        // 오버레이 캔버스에 실시간 정보 표시
-        drawOverlay();
-    }
-
-    function drawOverlay() {
-        const canvas = document.getElementById('overlayCanvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // 감지 영역 표시
-        if (useBackgroundSubtraction && backgroundModel) {
-            ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-        }
-        
-        // 상태 정보 표시
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(10, 10, 200, 100);
-        
-        ctx.fillStyle = 'white';
-        ctx.font = '12px Arial';
-        ctx.fillText(`FPS: ${document.getElementById('fps').textContent}`, 15, 25);
-        ctx.fillText(`프레임: ${frameCount}`, 15, 40);
-        ctx.fillText(`AI 모드: ${document.getElementById('aiMode').textContent}`, 15, 55);
-        ctx.fillText(`성능: ${performanceScore}점`, 15, 70);
-        
-        // 활성 필터 표시
-        const activeFilters = [];
-        if (useBackgroundSubtraction) activeFilters.push('BG');
-        if (useEdgeDetection) activeFilters.push('Edge');
-        if (useContourAnalysis) activeFilters.push('Contour');
-        if (useEnsembleMode) activeFilters.push('Ensemble');
-        
-        ctx.fillText(`필터: ${activeFilters.join('|')}`, 15, 85);
-    }
-
-    // ===== 분류 및 시리얼 통신 =====
-    async function captureAndClassify() {
-        const video = document.getElementById('video');
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        
-        // 모든 전처리 적용
-        ctx.filter = `brightness(${100 + brightness}%) contrast(${contrast * 100}%) saturate(${saturation * 100}%)`;
-        if (blurAmount > 0) {
-            ctx.filter += ` blur(${blurAmount}px)`;
-        }
-        
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        canvas.toBlob(async (blob) => {
-            const formData = new FormData();
-            formData.append('file', blob, 'image.jpg');
-            
+        // 카메라 시작
+        async function startCamera() {
             try {
-                logMessage('🧠 AI 분류 시작...');
-                updateAIMode('분류 중');
+                document.getElementById('status').innerHTML = '📷 카메라 초기화 중...';
                 
-                // 앙상블 모드인 경우 여러 번 분류
-                const results = [];
-                const attempts = useEnsembleMode ? 3 : 1;
-                
-                for (let i = 0; i < attempts; i++) {
-                    const response = await fetch('/predict', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        results.push(result);
+                const constraints = {
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'environment'
                     }
-                }
+                };
                 
-                // 앙상블 결과 처리
-                let finalResult;
-                if (results.length > 1) {
-                    finalResult = ensembleResults(results);
-                    logMessage(`🎯 앙상블 분류 완료 (${results.length}개 모델 평균)`);
-                } else {
-                    finalResult = results[0];
-                }
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                const video = document.getElementById('video');
+                video.srcObject = currentStream;
                 
-                const label = finalResult.label;
-                const confidence = finalResult.confidence;
-                
-                // 정확도 기록
-                accuracyHistory.push(confidence);
-                if (accuracyHistory.length > 10) {
-                    accuracyHistory.shift();
-                }
-                
-                const avgAccuracy = accuracyHistory.reduce((a, b) => a + b, 0) / accuracyHistory.length;
-                document.getElementById('accuracy').textContent = `${avgAccuracy.toFixed(1)}%`;
-                
-                logMessage(`✅ 분류 완료: ${label} (${confidence}%)`);
-                document.getElementById('result').innerHTML = `
-                    🎯 <strong>분류 결과:</strong> ${label}<br>
-                    📊 <strong>신뢰도:</strong> ${confidence}%<br>
-                    🤖 <strong>AI 모드:</strong> ${useEnsembleMode ? '앙상블' : '단일'} 분류
-                `;
-                
-                if (auto && port && writer && label !== lastLabel) {
-                    const currentTime = Date.now();
-                    if (currentTime - lastSend > 2000) {
-                        await sendCommand(label);
-                        lastLabel = label;
-                        lastSend = currentTime;
-                    }
-                }
-                
-                updatePerformanceScore(Math.floor(confidence / 10));
-                updateAIMode('대기');
+                video.onloadedmetadata = () => {
+                    video.play();
+                    document.getElementById('status').innerHTML = '✅ 카메라 준비 완료';
+                    document.getElementById('result').innerHTML = '카메라가 준비되었습니다';
+                };
                 
             } catch (error) {
-                console.error('분류 오류:', error);
-                logMessage('❌ 분류 오류: ' + error.message);
-                updateAIMode('오류');
-            } finally {
-                setTimeout(() => {
-                    isProcessing = false;
-                    updateAIMode('감지');
-                }, 3000);
+                console.error('카메라 오류:', error);
+                document.getElementById('status').innerHTML = '❌ 카메라 오류: ' + error.message;
+                document.getElementById('result').innerHTML = '카메라 연결 실패';
             }
-        }, 'image/jpeg', 0.9);
-    }
-
-    function ensembleResults(results) {
-        // 단순 평균 앙상블
-        const labelCounts = {};
-        let totalConfidence = 0;
-        
-        results.forEach(result => {
-            labelCounts[result.label] = (labelCounts[result.label] || 0) + 1;
-            totalConfidence += result.confidence;
-        });
-        
-        const mostCommonLabel = Object.keys(labelCounts).reduce((a, b) => 
-            labelCounts[a] > labelCounts[b] ? a : b
-        );
-        
-        return {
-            label: mostCommonLabel,
-            confidence: Math.round(totalConfidence / results.length)
-        };
-    }
-
-    async function manualClassify() {
-        if (isProcessing) return;
-        isProcessing = true;
-        logMessage('👆 수동 분류 요청');
-        await captureAndClassify();
-    }
-
-    // ===== 시리얼 통신 =====
-    async function connectSerial() {
-        try {
-            port = await navigator.serial.requestPort();
-            await port.open({ baudRate: 9600 });
-            writer = port.writable.getWriter();
-            document.getElementById('status').innerText = '✅ 아두이노 연결됨';
-            logMessage('🔗 아두이노 시리얼 연결 성공');
-        } catch (error) {
-            console.error('시리얼 연결 오류:', error);
-            document.getElementById('status').innerText = '❌ 시리얼 연결 실패';
-            logMessage('❌ 시리얼 연결 실패: ' + error.message);
         }
-    }
 
-    async function sendCommand(label) {
-        if (!writer) return;
-        
-        const commands = {
-            'cardboard': '1\n',
-            'glass': '2\n', 
-            'metal': '3\n',
-            'paper': '4\n',
-            'plastic': '5\n',
-            'trash': '6\n'
-        };
-        
-        const command = commands[label] || '0\n';
-        
-        try {
-            await writer.write(new TextEncoder().encode(command));
-            logMessage(`📡 아두이노 명령 전송: ${label} -> ${command.trim()}`);
-        } catch (error) {
-            console.error('명령 전송 오류:', error);
-            logMessage('❌ 명령 전송 실패: ' + error.message);
+        // 자동 분류 토글
+        function toggleAuto() {
+            auto = !auto;
+            const btn = document.getElementById('autoBtn');
+            
+            if (auto) {
+                btn.textContent = '⏹️ 자동 분류 중지';
+                btn.style.background = '#f44336';
+                startAutoMode();
+            } else {
+                btn.textContent = '🔄 자동 분류 시작';
+                btn.style.background = '#4CAF50';
+                stopAutoMode();
+            }
         }
-    }
 
-    // ===== 메인 컨트롤 =====
-    function toggleAuto() {
-        auto = !auto;
-        const button = document.getElementById('autoButton');
-        
-        if (auto) {
-            button.innerText = '자동 분류 중지';
-            button.className = 'btn btn-danger';
-            logMessage('🚀 자동 분류 모드 시작 - 모든 AI 최적화 활성화');
+        // 자동 모드 시작
+        function startAutoMode() {
+            document.getElementById('result').innerHTML = '🧠 AI 시스템 초기화 중...';
+            document.getElementById('status').innerHTML = '📚 배경 학습 시작';
             
-            intervalId = setInterval(monitorFrameChanges, 200); // 더 빠른 감지
-        } else {
-            button.innerText = '자동 분류 시작';
-            button.className = 'btn btn-success';
-            logMessage('⏹️ 자동 분류 모드 중지');
+            // 배경 학습 초기화
+            backgroundModel = null;
+            backgroundFrameCount = 0;
+            backgroundLearningComplete = false;
+            previousFrame = null;
+            frameBuffer = [];
             
+            // 모니터링 시작
+            intervalId = setInterval(monitorAndProcess, AUTO_CONFIG.monitoringInterval);
+        }
+
+        // 자동 모드 중지
+        function stopAutoMode() {
             if (intervalId) {
                 clearInterval(intervalId);
                 intervalId = null;
             }
             isProcessing = false;
-            updateAIMode('대기');
+            document.getElementById('result').innerHTML = '자동 분류가 중지되었습니다';
+            document.getElementById('status').innerHTML = '대기 중...';
         }
-    }
 
-    // ===== 설정 업데이트 함수들 =====
-    function updateSensitivity(value) {
-        changeThreshold = value / 100;
-        document.getElementById('sensitivityValue').textContent = value;
-        logMessage(`⚙️ 감지 민감도: ${value}%`);
-    }
-
-    function updateLearningRate(value) {
-        learningRate = parseFloat(value);
-        document.getElementById('learningRateValue').textContent = value;
-        logMessage(`⚙️ 배경 학습률: ${value}`);
-    }
-
-    function updateEdgeThreshold(value) {
-        edgeThreshold = parseInt(value);
-        document.getElementById('edgeThresholdValue').textContent = value;
-        logMessage(`⚙️ 엣지 임계값: ${value}`);
-    }
-
-    function updateContourSize(value) {
-        contourMinSize = parseInt(value);
-        document.getElementById('contourSizeValue').textContent = value;
-        logMessage(`⚙️ 컨투어 최소 크기: ${value}`);
-    }
-
-    function updateBrightness(value) {
-        brightness = parseInt(value);
-        document.getElementById('brightnessValue').textContent = value;
-        logMessage(`🎨 밝기 조정: ${value}`);
-    }
-
-    function updateContrast(value) {
-        contrast = parseFloat(value);
-        document.getElementById('contrastValue').textContent = value;
-        logMessage(`🎨 대비 조정: ${value}`);
-    }
-
-    function updateSaturation(value) {
-        saturation = parseFloat(value);
-        document.getElementById('saturationValue').textContent = value;
-        logMessage(`🎨 채도 조정: ${value}`);
-    }
-
-    function updateBlur(value) {
-        blurAmount = parseInt(value);
-        document.getElementById('blurValue').textContent = value;
-        logMessage(`🎨 블러 효과: ${value}`);
-    }
-
-    // ===== 색상 공간 변환 =====
-    function toggleColorSpace(space) {
-        currentColorSpace = space;
-        document.getElementById('colorSpaceInfo').textContent = `현재 색상 공간: ${space}`;
-        logMessage(`🎨 색상 공간 변경: ${space}`);
-        
-        // 색상 공간별 최적화 적용
-        switch(space) {
-            case 'HSV':
-                logMessage('🎨 HSV 색상 공간 - 색조 기반 분석 활성화');
-                break;
-            case 'LAB':
-                logMessage('🎨 LAB 색상 공간 - 지각적 균등성 분석 활성화');
-                break;
-            case 'YUV':
-                logMessage('🎨 YUV 색상 공간 - 휘도/색차 분리 분석 활성화');
-                break;
-            default:
-                logMessage('🎨 RGB 색상 공간 - 기본 분석 모드');
+        // 프레임 모니터링 및 처리
+        function monitorAndProcess() {
+            const video = document.getElementById('video');
+            if (!video || video.videoWidth === 0) return;
+            
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // 배경 학습 단계
+                if (!backgroundLearningComplete) {
+                    learnBackground(currentFrame);
+                    return;
+                }
+                
+                // 프레임 변화 감지 및 분류
+                if (!isProcessing && detectSignificantChange(currentFrame)) {
+                    isProcessing = true;
+                    document.getElementById('result').innerHTML = '🗑️ 쓰레기 감지됨 - 1초 후 분석...';
+                    document.getElementById('status').innerHTML = '⏳ 분류 준비 중...';
+                    
+                    setTimeout(() => {
+                        captureAndClassify();
+                    }, AUTO_CONFIG.classificationDelay);
+                }
+                
+                // 이전 프레임 업데이트
+                previousFrame = currentFrame;
+                
+            } catch (error) {
+                console.error('모니터링 오류:', error);
+            }
         }
-        
-        updatePerformanceScore(2);
-    }
 
-    // ===== 시스템 관리 =====
-    function relearnBackground() {
-        backgroundModel = null;
-        useBackgroundSubtraction = false;
-        logMessage('🔄 배경 재학습 시작');
-        startBackgroundLearning();
-    }
-
-    function calibrateSystem() {
-        logMessage('🔧 시스템 캘리브레이션 시작');
-        
-        // 자동 설정 최적화
-        setTimeout(() => {
-            changeThreshold = 0.03;
-            learningRate = 0.15;
-            edgeThreshold = 120;
-            contourMinSize = 400;
+        // 배경 학습
+        function learnBackground(currentFrame) {
+            backgroundFrameCount++;
             
-            // UI 업데이트
-            document.getElementById('sensitivity').value = 3;
-            document.getElementById('learningRate').value = 0.15;
-            document.getElementById('edgeThreshold').value = 120;
-            document.getElementById('contourSize').value = 400;
+            if (!backgroundModel) {
+                // 첫 번째 프레임으로 초기화
+                backgroundModel = new ImageData(
+                    new Uint8ClampedArray(currentFrame.data), 
+                    currentFrame.width, 
+                    currentFrame.height
+                );
+                for (let i = 0; i < backgroundModel.data.length; i++) {
+                    backgroundModel.data[i] = currentFrame.data[i];
+                }
+            } else {
+                // 평균화로 배경 모델 업데이트
+                const alpha = 0.1; // 학습률
+                for (let i = 0; i < backgroundModel.data.length; i += 4) {
+                    backgroundModel.data[i] = backgroundModel.data[i] * (1 - alpha) + currentFrame.data[i] * alpha;     // R
+                    backgroundModel.data[i + 1] = backgroundModel.data[i + 1] * (1 - alpha) + currentFrame.data[i + 1] * alpha; // G
+                    backgroundModel.data[i + 2] = backgroundModel.data[i + 2] * (1 - alpha) + currentFrame.data[i + 2] * alpha; // B
+                }
+            }
             
-            updateSensitivity(3);
-            updateLearningRate(0.15);
-            updateEdgeThreshold(120);
-            updateContourSize(400);
+            const progress = Math.round((backgroundFrameCount / AUTO_CONFIG.backgroundLearningFrames) * 100);
+            document.getElementById('status').innerHTML = `📚 배경 학습 중... ${progress}%`;
             
-            logMessage('✅ 시스템 캘리브레이션 완료 - 최적 설정 적용');
-            updatePerformanceScore(10);
-        }, 2000);
-    }
-
-    function resetAllSettings() {
-        if (confirm('모든 설정을 초기화하시겠습니까?')) {
-            // 모든 설정 초기화
-            changeThreshold = 0.05;
-            learningRate = 0.1;
-            edgeThreshold = 100;
-            contourMinSize = 500;
-            brightness = 0;
-            contrast = 1.0;
-            saturation = 1.0;
-            blurAmount = 0;
-            
-            // UI 초기화
-            document.getElementById('sensitivity').value = 5;
-            document.getElementById('learningRate').value = 0.1;
-            document.getElementById('edgeThreshold').value = 100;
-            document.getElementById('contourSize').value = 500;
-            document.getElementById('brightness').value = 0;
-            document.getElementById('contrast').value = 1.0;
-            document.getElementById('saturation').value = 1.0;
-            document.getElementById('blur').value = 0;
-            
-            // 값 표시 업데이트
-            updateSensitivity(5);
-            updateLearningRate(0.1);
-            updateEdgeThreshold(100);
-            updateContourSize(500);
-            updateBrightness(0);
-            updateContrast(1.0);
-            updateSaturation(1.0);
-            updateBlur(0);
-            
-            logMessage('🔄 모든 설정이 초기화되었습니다');
-            performanceScore = 100;
-            updatePerformanceScore(0);
+            if (backgroundFrameCount >= AUTO_CONFIG.backgroundLearningFrames) {
+                backgroundLearningComplete = true;
+                document.getElementById('result').innerHTML = '✅ AI 시스템 준비 완료 - 쓰레기 감지 대기 중';
+                document.getElementById('status').innerHTML = '👁️ 실시간 모니터링 중...';
+            }
         }
-    }
 
-    function saveSettings() {
-        const settings = {
-            changeThreshold,
-            learningRate,
-            edgeThreshold,
-            contourMinSize,
-            brightness,
-            contrast,
-            saturation,
-            blurAmount,
-            useBackgroundSubtraction,
-            useEdgeDetection,
-            useContourAnalysis,
-            useEnsembleMode,
-            currentColorSpace
-        };
-        
-        localStorage.setItem('aiRecycleSettings', JSON.stringify(settings));
-        logMessage('💾 설정이 저장되었습니다');
-    }
-
-    function loadSettings() {
-        const saved = localStorage.getItem('aiRecycleSettings');
-        if (saved) {
-            const settings = JSON.parse(saved);
+        // 유의미한 변화 감지
+        function detectSignificantChange(currentFrame) {
+            if (!backgroundModel || !previousFrame) return false;
             
-            changeThreshold = settings.changeThreshold || 0.05;
-            learningRate = settings.learningRate || 0.1;
-            edgeThreshold = settings.edgeThreshold || 100;
-            contourMinSize = settings.contourMinSize || 500;
-            brightness = settings.brightness || 0;
-            contrast = settings.contrast || 1.0;
-            saturation = settings.saturation || 1.0;
-            blurAmount = settings.blurAmount || 0;
+            let totalDiff = 0;
+            let pixelCount = 0;
             
-            // 체크박스 설정
-            document.getElementById('backgroundSubtraction').checked = settings.useBackgroundSubtraction !== false;
-            document.getElementById('edgeDetection').checked = settings.useEdgeDetection !== false;
-            document.getElementById('contourAnalysis').checked = settings.useContourAnalysis !== false;
-            document.getElementById('ensembleMode').checked = settings.useEnsembleMode !== false;
+            // 배경 차분 계산
+            for (let i = 0; i < currentFrame.data.length; i += 4) {
+                const currentR = currentFrame.data[i];
+                const currentG = currentFrame.data[i + 1];
+                const currentB = currentFrame.data[i + 2];
+                
+                const bgR = backgroundModel.data[i];
+                const bgG = backgroundModel.data[i + 1];
+                const bgB = backgroundModel.data[i + 2];
+                
+                // 유클리드 거리로 색상 차이 계산
+                const colorDiff = Math.sqrt(
+                    Math.pow(currentR - bgR, 2) + 
+                    Math.pow(currentG - bgG, 2) + 
+                    Math.pow(currentB - bgB, 2)
+                );
+                
+                if (colorDiff > 30) { // 임계값 이상의 변화
+                    totalDiff += colorDiff;
+                    pixelCount++;
+                }
+            }
             
-            useBackgroundSubtraction = settings.useBackgroundSubtraction !== false;
-            useEdgeDetection = settings.useEdgeDetection !== false;
-            useContourAnalysis = settings.useContourAnalysis !== false;
-            useEnsembleMode = settings.useEnsembleMode !== false;
-            
-            currentColorSpace = settings.currentColorSpace || 'RGB';
-            
-            logMessage('📁 저장된 설정을 불러왔습니다');
-            updatePerformanceScore(5);
-        } else {
-            logMessage('❌ 저장된 설정이 없습니다');
+            const changeRatio = pixelCount / (currentFrame.width * currentFrame.height);
+            return changeRatio > changeThreshold;
         }
-    }
 
-    // ===== 유틸리티 함수들 =====
-    function logMessage(message) {
-        const log = document.getElementById('performanceLog');
-        const timestamp = new Date().toLocaleTimeString();
-        log.innerHTML += `[${timestamp}] ${message}<br>`;
-        log.scrollTop = log.scrollHeight;
-    }
+        // 이미지 전처리 및 최적화
+        function preprocessImage(canvas) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // 노이즈 감소 및 대비 향상
+            for (let i = 0; i < data.length; i += 4) {
+                // HSV 변환을 통한 색상 최적화
+                const r = data[i] / 255;
+                const g = data[i + 1] / 255;
+                const b = data[i + 2] / 255;
+                
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                const delta = max - min;
+                
+                // 채도 향상
+                if (delta > 0.1) {
+                    const saturation = delta / max;
+                    const enhancedSaturation = Math.min(saturation * 1.2, 1);
+                    
+                    data[i] = Math.min(255, data[i] * (1 + enhancedSaturation * 0.3));
+                    data[i + 1] = Math.min(255, data[i + 1] * (1 + enhancedSaturation * 0.3));
+                    data[i + 2] = Math.min(255, data[i + 2] * (1 + enhancedSaturation * 0.3));
+                }
+                
+                // 대비 자동 조정
+                const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                const contrast = brightness < 128 ? 1.1 : 0.9;
+                
+                data[i] = Math.min(255, Math.max(0, (data[i] - 128) * contrast + 128));
+                data[i + 1] = Math.min(255, Math.max(0, (data[i + 1] - 128) * contrast + 128));
+                data[i + 2] = Math.min(255, Math.max(0, (data[i + 2] - 128) * contrast + 128));
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            return canvas;
+        }
 
-    function clearLog() {
-        document.getElementById('performanceLog').innerHTML = '';
-        logMessage('📝 로그가 초기화되었습니다');
-    }
+        // 캡처 및 분류
+        async function captureAndClassify() {
+            try {
+                const video = document.getElementById('video');
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // 이미지 전처리 적용
+                const optimizedCanvas = preprocessImage(canvas);
+                
+                document.getElementById('result').innerHTML = '🤖 AI 분석 중...';
+                document.getElementById('status').innerHTML = '🧠 딥러닝 처리 중...';
+                
+                const blob = await new Promise(resolve => optimizedCanvas.toBlob(resolve, 'image/jpeg', 0.8));
+                const formData = new FormData();
+                formData.append('file', blob, 'image.jpg');
+                
+                const response = await fetch('/classify', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    const label = result.label || '알 수 없음';
+                    const confidence = result.confidence || 0;
+                    
+                    document.getElementById('result').innerHTML = 
+                        `🎯 분류 결과: <span style="color: #4CAF50">${label}</span><br>
+                         <small>신뢰도: ${(confidence * 100).toFixed(1)}%</small>`;
+                    
+                    document.getElementById('status').innerHTML = '📤 결과 전송 중...';
+                    
+                    // 시리얼 전송
+                    if (writer && label !== '알 수 없음') {
+                        await sendToSerial(label);
+                        document.getElementById('status').innerHTML = '✅ 분류 완료 - 모니터링 재개';
+                    } else {
+                        document.getElementById('status').innerHTML = '⚠️ 시리얼 미연결 - 모니터링 재개';
+                    }
+                } else {
+                    throw new Error('분류 서버 오류');
+                }
+                
+            } catch (error) {
+                console.error('분류 오류:', error);
+                document.getElementById('result').innerHTML = '❌ 분류 실패: ' + error.message;
+                document.getElementById('status').innerHTML = '❌ 오류 발생 - 모니터링 재개';
+            } finally {
+                // 3초 후 다시 모니터링 시작
+                setTimeout(() => {
+                    isProcessing = false;
+                    if (auto) {
+                        document.getElementById('result').innerHTML = '👁️ 쓰레기 감지 대기 중...';
+                        document.getElementById('status').innerHTML = '🔍 실시간 모니터링 중...';
+                    }
+                }, 3000);
+            }
+        }
 
-    function exportLog() {
-        const log = document.getElementById('performanceLog').innerHTML;
-        const blob = new Blob([log.replace(/<br>/g, '\n').replace(/<[^>]*>/g, '')], {
-            type: 'text/plain'
+        // 시리얼 연결
+        async function connectSerial() {
+            try {
+                document.getElementById('status').innerHTML = '🔌 시리얼 포트 연결 중...';
+                
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+                writer = port.writable.getWriter();
+                
+                document.getElementById('status').innerHTML = '✅ 시리얼 연결 완료';
+                console.log('시리얼 포트 연결 성공');
+                
+            } catch (error) {
+                console.error('시리얼 연결 오류:', error);
+                document.getElementById('status').innerHTML = '❌ 시리얼 연결 실패: ' + error.message;
+            }
+        }
+
+        // 시리얼 데이터 전송
+        async function sendToSerial(label) {
+            if (!writer) return;
+            
+            try {
+                const command = `${label}\n`;
+                const encoder = new TextEncoder();
+                await writer.write(encoder.encode(command));
+                console.log('시리얼 전송:', command.trim());
+                
+            } catch (error) {
+                console.error('시리얼 전송 오류:', error);
+            }
+        }
+
+        // 정리 함수
+        window.addEventListener('beforeunload', () => {
+            if (writer) {
+                writer.releaseLock();
+            }
+            if (port) {
+                port.close();
+            }
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
         });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `ai_recycle_log_${new Date().toISOString().slice(0, 10)}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-        logMessage('📤 로그가 내보내졌습니다');
-    }
 
-    function updateFPS() {
-        const currentTime = Date.now();
-        const timeDiff = currentTime - lastFrameTime;
-        const fps = Math.round(1000 / timeDiff);
-        
-        document.getElementById('fps').textContent = `${fps} FPS`;
-        document.getElementById('frameCount').textContent = frameCount;
-        
-        lastFrameTime = currentTime;
-    }
-
-    function updateAIMode(mode) {
-        document.getElementById('aiMode').textContent = mode;
-    }
-
-    function updatePerformanceScore(change) {
-        performanceScore = Math.max(0, Math.min(100, performanceScore + change));
-        document.getElementById('performanceScore').textContent = performanceScore;
-        
-        // 성능에 따른 색상 변경
-        const scoreElement = document.getElementById('performanceScore');
-        if (performanceScore >= 80) {
-            scoreElement.style.color = '#28a745';
-        } else if (performanceScore >= 60) {
-            scoreElement.style.color = '#ffc107';
-        } else {
-            scoreElement.style.color = '#dc3545';
-        }
-    }
-
-    // ===== 이벤트 리스너 =====
-    document.getElementById('backgroundSubtraction').addEventListener('change', (e) => {
-        useBackgroundSubtraction = e.target.checked;
-        logMessage(`⚙️ 배경 차분: ${useBackgroundSubtraction ? '활성화' : '비활성화'}`);
-    });
-
-    document.getElementById('edgeDetection').addEventListener('change', (e) => {
-        useEdgeDetection = e.target.checked;
-        logMessage(`⚙️ 엣지 검출: ${useEdgeDetection ? '활성화' : '비활성화'}`);
-    });
-
-    document.getElementById('contourAnalysis').addEventListener('change', (e) => {
-        useContourAnalysis = e.target.checked;
-        logMessage(`⚙️ 컨투어 분석: ${useContourAnalysis ? '활성화' : '비활성화'}`);
-    });
-
-    document.getElementById('ensembleMode').addEventListener('change', (e) => {
-        useEnsembleMode = e.target.checked;
-        logMessage(`⚙️ 앙상블 모드: ${useEnsembleMode ? '활성화' : '비활성화'}`);
-    });
-
-    // ===== 초기화 =====
-    window.addEventListener('load', async () => {
-        logMessage('🚀 AI 슈퍼 자동 분리수거 시스템 v3.0 시작');
-        logMessage('🔧 모든 최적화 모듈 로딩 중...');
-        
-        await updateCameraList();
-        await startCamera();
-        
-        // 저장된 설정 자동 로드
-        loadSettings();
-        
-        logMessage('✅ 시스템 초기화 완료 - 모든 AI 기능 활성화됨');
-        updateAIMode('준비완료');
-        
-        // 활성 필터 표시 업데이트
-        setInterval(() => {
-            const activeFilters = [];
-            if (useBackgroundSubtraction) activeFilters.push('배경차분');
-            if (useEdgeDetection) activeFilters.push('엣지검출');
-            if (useContourAnalysis) activeFilters.push('컨투어');
-            if (useEnsembleMode) activeFilters.push('앙상블');
-            
-            document.getElementById('activeFilters').textContent = activeFilters.join(', ') || '기본';
-        }, 1000);
-    });
+        // 자동 시작 (선택사항)
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                startCamera();
+            }, 1000);
+        });
     </script>
 </body>
 </html> 
