@@ -116,6 +116,8 @@
             </select>
             <button onclick="startCamera()">📷 카메라 시작</button>
             <button onclick="stopCamera()">⏹️ 카메라 중지</button>
+            <button onclick="decreaseSensitivity()">🔽 민감도 낮추기</button>
+            <button onclick="increaseSensitivity()">🔼 민감도 높이기</button>
             <button onclick="checkServer()">🔍 서버 상태 확인</button>
             <button onclick="debugServerRequest()">🐛 서버 디버그</button>
             <button onclick="testServerWithImage()">📤 서버 POST 테스트</button>
@@ -124,8 +126,11 @@
             <button onclick="connectSerial()">🔌 시리얼 연결</button>
         </div>
         
-        <div id="result">시스템 준비 중...</div>
-        <div id="status" class="status">카메라를 시작해주세요</div>
+                 <div id="result">시스템 준비 중...</div>
+         <div id="status" class="status">카메라를 시작해주세요</div>
+         <div id="sensitivity" class="status" style="background: #333; color: #FFC107;">
+             🎚️ 변화 감지 민감도: <span id="sensitivityValue">15.0%</span>
+         </div>
     </div>
 
     <script>
@@ -143,18 +148,18 @@
         let backgroundLearningComplete = false;
         let previousFrame = null;
         let frameBuffer = [];
-        let changeThreshold = 0.03; // 3% 변화 감지
-        
-        // 자동 최적화 설정
-        const AUTO_CONFIG = {
-            backgroundLearningFrames: 50,
-            monitoringInterval: 300,  // 0.3초마다 체크
-            classificationDelay: 1000, // 1초 대기 후 분류
-            stabilizationFrames: 5,
-            noiseReduction: true,
-            edgeEnhancement: true,
-            colorSpaceOptimization: true
-        };
+                 let changeThreshold = 0.15; // 15% 변화 감지 (더 둔하게)
+         
+         // 자동 최적화 설정
+         const AUTO_CONFIG = {
+             backgroundLearningFrames: 50,
+             monitoringInterval: 800,  // 0.8초마다 체크 (더 느리게)
+             classificationDelay: 2000, // 2초 대기 후 분류 (더 길게)
+             stabilizationFrames: 5,
+             noiseReduction: true,
+             edgeEnhancement: true,
+             colorSpaceOptimization: true
+         };
 
         // 카메라 목록 업데이트
         async function updateCameraList() {
@@ -268,19 +273,48 @@
             }
         }
 
-        // 카메라 중지
-        function stopCamera() {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-                currentStream = null;
-                
-                const video = document.getElementById('video');
-                video.srcObject = null;
-                
-                document.getElementById('status').innerHTML = '📷 카메라가 중지되었습니다';
-                document.getElementById('result').innerHTML = '카메라를 다시 시작하세요';
-            }
-        }
+                 // 카메라 중지
+         function stopCamera() {
+             if (currentStream) {
+                 currentStream.getTracks().forEach(track => track.stop());
+                 currentStream = null;
+                 
+                 const video = document.getElementById('video');
+                 video.srcObject = null;
+                 
+                 document.getElementById('status').innerHTML = '📷 카메라가 중지되었습니다';
+                 document.getElementById('result').innerHTML = '카메라를 다시 시작하세요';
+             }
+         }
+
+         // 민감도 조절 함수들
+         function decreaseSensitivity() {
+             changeThreshold = Math.min(0.5, changeThreshold + 0.05); // 최대 50%까지 둔하게
+             updateSensitivityDisplay();
+             document.getElementById('status').innerHTML = `🔽 민감도 낮춤 - 더 큰 변화만 감지`;
+         }
+
+         function increaseSensitivity() {
+             changeThreshold = Math.max(0.05, changeThreshold - 0.05); // 최소 5%까지 민감하게
+             updateSensitivityDisplay();
+             document.getElementById('status').innerHTML = `🔼 민감도 높임 - 작은 변화도 감지`;
+         }
+
+         function updateSensitivityDisplay() {
+             document.getElementById('sensitivityValue').textContent = `${(changeThreshold * 100).toFixed(1)}%`;
+             
+             // 민감도에 따른 색상 변경
+             const sensitivityElement = document.getElementById('sensitivity');
+             if (changeThreshold >= 0.3) {
+                 sensitivityElement.style.color = '#FF6B6B'; // 빨간색 (매우 둔함)
+             } else if (changeThreshold >= 0.2) {
+                 sensitivityElement.style.color = '#FFC107'; // 노란색 (둔함)
+             } else if (changeThreshold >= 0.1) {
+                 sensitivityElement.style.color = '#4CAF50'; // 초록색 (보통)
+             } else {
+                 sensitivityElement.style.color = '#2196F3'; // 파란색 (민감함)
+             }
+         }
 
         // 자동 분류 토글
         function toggleAuto() {
@@ -422,14 +456,15 @@
                     Math.pow(currentB - bgB, 2)
                 );
                 
-                if (colorDiff > 30) { // 임계값 이상의 변화
-                    totalDiff += colorDiff;
-                    pixelCount++;
-                }
-            }
-            
-            const changeRatio = pixelCount / (currentFrame.width * currentFrame.height);
-            return changeRatio > changeThreshold;
+                                 if (colorDiff > 60) { // 임계값을 높여서 더 큰 변화만 감지 (30 → 60)
+                     totalDiff += colorDiff;
+                     pixelCount++;
+                 }
+             }
+             
+             const changeRatio = pixelCount / (currentFrame.width * currentFrame.height);
+             console.log(`변화 감지: ${(changeRatio * 100).toFixed(2)}% (임계값: ${(changeThreshold * 100).toFixed(1)}%)`);
+             return changeRatio > changeThreshold;
         }
 
         // 이미지 전처리 및 최적화
