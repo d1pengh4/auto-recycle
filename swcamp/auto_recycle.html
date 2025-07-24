@@ -117,6 +117,7 @@
             <button onclick="startCamera()">📷 카메라 시작</button>
             <button onclick="stopCamera()">⏹️ 카메라 중지</button>
             <button onclick="checkServer()">🔍 서버 상태 확인</button>
+            <button onclick="debugServerRequest()">🐛 서버 디버그</button>
             <button onclick="testServerWithImage()">📤 서버 POST 테스트</button>
             <button onclick="testClassification()">🧪 분류 테스트</button>
             <button onclick="toggleAuto()" id="autoBtn">🔄 자동 분류 시작</button>
@@ -613,6 +614,38 @@
              }
          }
 
+         // 서버 디버그 (상세한 요청/응답 정보)
+         async function debugServerRequest() {
+             document.getElementById('result').innerHTML = '🐛 서버 디버그 모드...';
+             document.getElementById('status').innerHTML = '🔍 상세 분석 중...';
+             
+             // 간단한 텍스트 데이터로 테스트
+             const testData = new FormData();
+             testData.append('file', new Blob(['test'], { type: 'text/plain' }), 'test.txt');
+             
+             try {
+                 const response = await fetch('http://localhost:5005/classify', {
+                     method: 'POST',
+                     body: testData
+                 });
+                 
+                 const responseText = await response.text();
+                 
+                 document.getElementById('result').innerHTML = 
+                     `🐛 디버그 정보:<br>
+                      <small>상태: ${response.status} ${response.statusText}</small><br>
+                      <small>헤더: ${JSON.stringify([...response.headers.entries()])}</small><br>
+                      <small>응답: ${responseText}</small><br>
+                      <small>Content-Type: ${response.headers.get('content-type')}</small>`;
+                 
+                 document.getElementById('status').innerHTML = `🐛 디버그 완료 - 상태: ${response.status}`;
+                 
+             } catch (error) {
+                 document.getElementById('result').innerHTML = `🐛 디버그 오류: ${error.message}`;
+                 document.getElementById('status').innerHTML = '❌ 디버그 실패';
+             }
+         }
+
          // 서버 POST 방식 테스트 (테스트 이미지 사용)
          async function testServerWithImage() {
              document.getElementById('result').innerHTML = '📤 서버 POST 방식 테스트 중...';
@@ -633,11 +666,10 @@
              
              document.getElementById('status').innerHTML = '📤 서버로 테스트 이미지 전송 중...';
              
-             // 서버 POST 테스트
-             const endpoints = [
-                 'http://localhost:5005/classify',
-                 'http://localhost:5005/predict'
-             ];
+                           // 서버 POST 테스트 (서버 로그 기반으로 /classify만 테스트)
+              const endpoints = [
+                  'http://localhost:5005/classify'
+              ];
              
              for (const endpoint of endpoints) {
                  try {
@@ -653,10 +685,8 @@
                          method: 'POST',
                          body: formData,
                          signal: controller.signal,
-                         mode: 'cors',
-                         headers: {
-                             'Accept': 'application/json'
-                         }
+                         mode: 'cors'
+                         // Content-Type 헤더를 제거 - FormData가 자동으로 설정
                      });
                      
                      clearTimeout(timeoutId);
@@ -730,15 +760,15 @@
                   // 서버 연결 진단
                   document.getElementById('status').innerHTML = '🔍 서버 연결 진단 중...';
                   
-                  // 로컬 서버 5005 포트 엔드포인트 시도
-                  const endpoints = [
-                      'http://localhost:5005/classify',
-                      'http://localhost:5005/predict', 
-                      'http://127.0.0.1:5005/classify',
-                      'http://127.0.0.1:5005/predict',
-                      '/classify', 
-                      '/predict'
-                  ];
+                                // 로컬 서버 5005 포트 엔드포인트 시도 (404 오류 방지를 위해 /classify만 우선)
+              const endpoints = [
+                  'http://localhost:5005/classify',
+                  'http://127.0.0.1:5005/classify',
+                  'http://localhost:5005/predict', 
+                  'http://127.0.0.1:5005/predict',
+                  '/classify', 
+                  '/predict'
+              ];
                   let success = false;
                   let result = null;
                   
@@ -754,10 +784,8 @@
                               method: 'POST',
                               body: formData,
                               signal: controller.signal,
-                              mode: 'cors',
-                              headers: {
-                                  'Accept': 'application/json'
-                              }
+                              mode: 'cors'
+                              // Content-Type 헤더를 제거 - FormData가 자동으로 설정
                           });
                           
                           clearTimeout(timeoutId);
