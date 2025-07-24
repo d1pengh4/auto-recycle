@@ -646,7 +646,7 @@
              }
          }
 
-         // 서버 POST 방식 테스트 (테스트 이미지 사용)
+                  // 서버 POST 방식 테스트 (JSON + base64 방식)
          async function testServerWithImage() {
              document.getElementById('result').innerHTML = '📤 서버 POST 방식 테스트 중...';
              document.getElementById('status').innerHTML = '🎨 테스트 이미지 생성 중...';
@@ -666,62 +666,55 @@
              
              document.getElementById('status').innerHTML = '📤 서버로 테스트 이미지 전송 중...';
              
-                           // 서버 POST 테스트 (서버 로그 기반으로 /classify만 테스트)
-              const endpoints = [
-                  'http://localhost:5005/classify'
-              ];
+             // Blob을 base64로 변환
+             const base64 = await blobToBase64(blob);
+             const base64Data = base64.split(',')[1]; // data:image/jpeg;base64, 부분 제거
              
-             for (const endpoint of endpoints) {
-                 try {
-                     document.getElementById('status').innerHTML = `📤 POST 테스트: ${endpoint}`;
+             const requestData = {
+                 image: base64Data
+             };
+             
+             try {
+                 document.getElementById('status').innerHTML = '📤 JSON 방식으로 전송 중...';
+                 
+                 const controller = new AbortController();
+                 const timeoutId = setTimeout(() => controller.abort(), 15000); // 15초 (AI 모델 로딩 시간 고려)
+                 
+                 const response = await fetch('http://localhost:5005/classify', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json'
+                     },
+                     body: JSON.stringify(requestData),
+                     signal: controller.signal,
+                     mode: 'cors'
+                 });
+                 
+                 clearTimeout(timeoutId);
+                 
+                 if (response.ok) {
+                     const result = await response.json();
                      
-                     const formData = new FormData();
-                     formData.append('file', blob, 'test.jpg');
-                     
-                     const controller = new AbortController();
-                     const timeoutId = setTimeout(() => controller.abort(), 10000);
-                     
-                     const response = await fetch(endpoint, {
-                         method: 'POST',
-                         body: formData,
-                         signal: controller.signal,
-                         mode: 'cors'
-                         // Content-Type 헤더를 제거 - FormData가 자동으로 설정
-                     });
-                     
-                     clearTimeout(timeoutId);
-                     
-                     if (response.ok) {
-                         const result = await response.json();
-                         const label = result.label || result.class || result.prediction || '응답 확인됨';
-                         const confidence = result.confidence || result.probability || result.score || 0;
-                         
-                         document.getElementById('result').innerHTML = 
-                             `✅ 서버 POST 테스트 성공!<br>
-                              <small>엔드포인트: ${endpoint}</small><br>
-                              <small>응답: ${JSON.stringify(result)}</small><br>
-                              <small style="color: #4CAF50;">🎯 서버가 정상적으로 작동합니다!</small>`;
-                         document.getElementById('status').innerHTML = '✅ POST 테스트 성공 - 서버 연동 완료';
-                         return;
-                     } else {
-                         document.getElementById('status').innerHTML = `❌ ${endpoint}: ${response.status} ${response.statusText}`;
-                         const errorText = await response.text();
-                         console.log('서버 응답 오류:', errorText);
-                     }
-                 } catch (error) {
-                     console.log(`${endpoint} POST 테스트 실패:`, error.message);
-                     document.getElementById('status').innerHTML = `❌ ${endpoint}: ${error.message}`;
-                     continue;
+                     document.getElementById('result').innerHTML = 
+                         `✅ 서버 POST 테스트 성공!<br>
+                          <small>Trash-Net 모델 응답:</small><br>
+                          <small>${JSON.stringify(result, null, 2)}</small><br>
+                          <small style="color: #4CAF50;">🎯 AI 분류 서버가 정상 작동합니다!</small>`;
+                     document.getElementById('status').innerHTML = '✅ Trash-Net 모델 테스트 성공';
+                     return;
+                 } else {
+                     const errorText = await response.text();
+                     document.getElementById('result').innerHTML = 
+                         `❌ 서버 응답 오류: ${response.status}<br>
+                          <small>${errorText}</small>`;
+                     document.getElementById('status').innerHTML = `❌ ${response.status} ${response.statusText}`;
                  }
+             } catch (error) {
+                 document.getElementById('result').innerHTML = 
+                     `❌ 연결 오류: ${error.message}<br>
+                      <small>서버가 실행 중인지 확인하세요</small>`;
+                 document.getElementById('status').innerHTML = '❌ 서버 연결 실패';
              }
-             
-             document.getElementById('result').innerHTML = 
-                 `❌ 서버 POST 테스트 실패<br>
-                  <small>• 서버가 POST /classify 또는 /predict를 지원하는지 확인</small><br>
-                  <small>• 서버가 'file' 필드로 이미지를 받는지 확인</small><br>
-                  <small>• JSON 형태로 응답하는지 확인</small><br>
-                  <small>• CORS 설정이 되어있는지 확인</small>`;
-             document.getElementById('status').innerHTML = '❌ POST 테스트 실패 - 서버 설정 확인 필요';
          }
 
          // 분류 테스트 (수동)
@@ -751,65 +744,82 @@
              await classifyImage(blob);
          }
 
-                   // 이미지 분류 함수 (공통)
-          async function classifyImage(blob) {
-              try {
-                  const formData = new FormData();
-                  formData.append('file', blob, 'image.jpg');
+                                       // 이미지 분류 함수 (공통)
+           async function classifyImage(blob) {
+               try {
+                   // Blob을 base64로 변환
+                   const base64 = await blobToBase64(blob);
+                   const base64Data = base64.split(',')[1]; // data:image/jpeg;base64, 부분 제거
+                   
+                   const requestData = {
+                       image: base64Data
+                   };
+                   
+                   // 서버 연결 진단
+                   document.getElementById('status').innerHTML = '🔍 서버 연결 진단 중...';
+                   
+                   // 로컬 서버 5005 포트 엔드포인트 시도
+                   const endpoints = [
+                       'http://localhost:5005/classify',
+                       'http://127.0.0.1:5005/classify'
+                   ];
+                   let success = false;
+                   let result = null;
+                   
+                   for (const endpoint of endpoints) {
+                       try {
+                           document.getElementById('status').innerHTML = `🔍 서버 연결 시도: ${endpoint}`;
+                           
+                           // fetch에 타임아웃 추가
+                           const controller = new AbortController();
+                           const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃 (AI 처리 시간 고려)
+                           
+                           const response = await fetch(endpoint, {
+                               method: 'POST',
+                               headers: {
+                                   'Content-Type': 'application/json'
+                               },
+                               body: JSON.stringify(requestData),
+                               signal: controller.signal,
+                               mode: 'cors'
+                           });
+                           
+                           clearTimeout(timeoutId);
+                           
+                           if (response.ok) {
+                               result = await response.json();
+                               success = true;
+                               document.getElementById('status').innerHTML = `✅ 서버 연결 성공: ${endpoint}`;
+                               break;
+                           } else {
+                               console.log(`${endpoint} 실패: ${response.status} ${response.statusText}`);
+                               document.getElementById('status').innerHTML = `❌ ${endpoint}: ${response.status} ${response.statusText}`;
+                               const errorText = await response.text();
+                               console.log('서버 오류 응답:', errorText);
+                           }
+                       } catch (error) {
+                           console.log(`${endpoint} 연결 실패:`, error.message);
+                           document.getElementById('status').innerHTML = `❌ ${endpoint}: ${error.message}`;
+                           await new Promise(resolve => setTimeout(resolve, 300)); // 0.3초 대기
+                           continue;
+                       }
+                   }
                   
-                  // 서버 연결 진단
-                  document.getElementById('status').innerHTML = '🔍 서버 연결 진단 중...';
-                  
-                                // 로컬 서버 5005 포트 엔드포인트 시도 (404 오류 방지를 위해 /classify만 우선)
-              const endpoints = [
-                  'http://localhost:5005/classify',
-                  'http://127.0.0.1:5005/classify',
-                  'http://localhost:5005/predict', 
-                  'http://127.0.0.1:5005/predict',
-                  '/classify', 
-                  '/predict'
-              ];
-                  let success = false;
-                  let result = null;
-                  
-                  for (const endpoint of endpoints) {
-                      try {
-                          document.getElementById('status').innerHTML = `🔍 서버 연결 시도: ${endpoint}`;
-                          
-                          // fetch에 타임아웃 추가
-                          const controller = new AbortController();
-                          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5초 타임아웃
-                          
-                          const response = await fetch(endpoint, {
-                              method: 'POST',
-                              body: formData,
-                              signal: controller.signal,
-                              mode: 'cors'
-                              // Content-Type 헤더를 제거 - FormData가 자동으로 설정
-                          });
-                          
-                          clearTimeout(timeoutId);
-                          
-                          if (response.ok) {
-                              result = await response.json();
-                              success = true;
-                              document.getElementById('status').innerHTML = `✅ 서버 연결 성공: ${endpoint}`;
-                              break;
-                          } else {
-                              console.log(`${endpoint} 실패: ${response.status} ${response.statusText}`);
-                              document.getElementById('status').innerHTML = `❌ ${endpoint}: ${response.status} ${response.statusText}`;
-                          }
-                      } catch (error) {
-                          console.log(`${endpoint} 연결 실패:`, error.message);
-                          document.getElementById('status').innerHTML = `❌ ${endpoint}: ${error.message}`;
-                          await new Promise(resolve => setTimeout(resolve, 300)); // 0.3초 대기
-                          continue;
-                      }
-                  }
-                  
-                  if (success && result) {
-                      const label = result.label || result.class || result.prediction || '알 수 없음';
-                      const confidence = result.confidence || result.probability || result.score || 0;
+                                     if (success && result) {
+                       // Trash-Net 모델 응답 처리 (배열 형태)
+                       let label = '알 수 없음';
+                       let confidence = 0;
+                       
+                       if (Array.isArray(result) && result.length > 0) {
+                           // 가장 높은 확률의 결과 선택
+                           const topResult = result[0];
+                           label = topResult.label || '알 수 없음';
+                           confidence = topResult.score || 0;
+                       } else if (result.label) {
+                           // 단일 객체 응답 처리
+                           label = result.label;
+                           confidence = result.confidence || result.score || 0;
+                       }
                       
                       document.getElementById('result').innerHTML = 
                           `🎯 분류 결과: <span style="color: #4CAF50">${label}</span><br>
@@ -860,6 +870,16 @@
                   return { label: randomLabel, confidence: randomConfidence };
               }
           }
+
+         // Blob을 base64로 변환하는 헬퍼 함수
+         function blobToBase64(blob) {
+             return new Promise((resolve, reject) => {
+                 const reader = new FileReader();
+                 reader.onload = () => resolve(reader.result);
+                 reader.onerror = reject;
+                 reader.readAsDataURL(blob);
+             });
+         }
 
          // 시리얼 데이터 전송
          async function sendToSerial(label) {
