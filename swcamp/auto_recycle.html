@@ -504,15 +504,23 @@
                      const randomLabel = demoLabels[Math.floor(Math.random() * demoLabels.length)];
                      const randomConfidence = 0.7 + Math.random() * 0.3;
                      
+                     // 오류 시에도 한국어 매핑 적용
+                     let errorUnified = '알 수 없음';
+                     if (randomLabel === 'plastic') errorUnified = '플라스틱';
+                     else if (randomLabel === 'paper' || randomLabel === 'cardboard') errorUnified = '종이';
+                     else if (randomLabel === 'metal') errorUnified = '캔';
+                     else if (randomLabel === 'glass' || randomLabel === 'trash') errorUnified = '비닐';
+                     else errorUnified = '비닐';
+                     
                      document.getElementById('result').innerHTML = 
-                         `🎯 분류 결과 (데모): <span style="color: #4CAF50">${randomLabel}</span><br>
-                          <small>신뢰도: ${(randomConfidence * 100).toFixed(1)}%</small><br>
+                         `🎯 분류 결과 (데모): <span style="color: #4CAF50">${errorUnified}</span><br>
+                          <small>원본: ${randomLabel} | 신뢰도: ${(randomConfidence * 100).toFixed(1)}%</small><br>
                           <small style="color: #FFC107">⚠️ 서버 오류로 데모 모드 실행</small>`;
                      
                      document.getElementById('status').innerHTML = '📤 데모 결과 전송 중...';
                      
                      if (writer) {
-                         sendToSerial(randomLabel);
+                         sendToSerial(errorUnified);
                          document.getElementById('status').innerHTML = '✅ 데모 분류 완료';
                      } else {
                          document.getElementById('status').innerHTML = '⚠️ 시리얼 미연결';
@@ -810,7 +818,7 @@
                        let label = '알 수 없음';
                        let confidence = 0;
                        
-                       if (Array.isArray(result) && result.length > 0) {
+                                              if (Array.isArray(result) && result.length > 0) {
                            // 가장 높은 확률의 결과 선택
                            const topResult = result[0];
                            label = topResult.label || '알 수 없음';
@@ -820,20 +828,28 @@
                            label = result.label;
                            confidence = result.confidence || result.score || 0;
                        }
-                      
-                      document.getElementById('result').innerHTML = 
-                          `🎯 분류 결과: <span style="color: #4CAF50">${label}</span><br>
-                           <small>신뢰도: ${(confidence * 100).toFixed(1)}%</small>`;
+                       
+                       // 영어 라벨을 한국어로 통합 매핑
+                       let unified = '알 수 없음';
+                       if (label === 'plastic') unified = '플라스틱';
+                       else if (label === 'paper' || label === 'cardboard') unified = '종이';
+                       else if (label === 'metal') unified = '캔';
+                       else if (label === 'glass' || label === 'trash') unified = '비닐';
+                       else unified = '비닐'; // 기타 모든 경우
+                       
+                       document.getElementById('result').innerHTML = 
+                           `🎯 분류 결과: <span style="color: #4CAF50">${unified}</span><br>
+                            <small>원본: ${label} | 신뢰도: ${(confidence * 100).toFixed(1)}%</small>`;
                       
                       document.getElementById('status').innerHTML = '📤 결과 전송 중...';
                       
-                      // 시리얼 전송
-                      if (writer && label !== '알 수 없음') {
-                          await sendToSerial(label);
-                          document.getElementById('status').innerHTML = '✅ 분류 완료';
-                      } else {
-                          document.getElementById('status').innerHTML = '⚠️ 시리얼 미연결';
-                      }
+                                             // 시리얼 전송 (한국어 통합 라벨 사용)
+                       if (writer && unified !== '알 수 없음') {
+                           await sendToSerial(unified);
+                           document.getElementById('status').innerHTML = '✅ 분류 완료';
+                       } else {
+                           document.getElementById('status').innerHTML = '⚠️ 시리얼 미연결';
+                       }
                       
                       return { label, confidence };
                   } else {
@@ -848,24 +864,32 @@
                   
                   await new Promise(resolve => setTimeout(resolve, 1000));
                   
-                  const demoLabels = ['plastic', 'paper', 'cardboard', 'glass', 'metal', 'trash'];
-                  const randomLabel = demoLabels[Math.floor(Math.random() * demoLabels.length)];
-                  const randomConfidence = 0.7 + Math.random() * 0.3; // 70-100%
-                  
-                  document.getElementById('result').innerHTML = 
-                      `🎯 분류 결과 (데모): <span style="color: #4CAF50">${randomLabel}</span><br>
-                       <small>신뢰도: ${(randomConfidence * 100).toFixed(1)}%</small><br>
-                       <small style="color: #FFC107">⚠️ 분류 서버 미연결 - 데모 모드</small>`;
-                  
-                  document.getElementById('status').innerHTML = '📤 데모 결과 전송 중...';
-                  
-                  // 시리얼 전송 (데모)
-                  if (writer) {
-                      await sendToSerial(randomLabel);
-                      document.getElementById('status').innerHTML = '✅ 데모 분류 완료';
-                  } else {
-                      document.getElementById('status').innerHTML = '⚠️ 시리얼 미연결';
-                  }
+                                   const demoLabels = ['plastic', 'paper', 'cardboard', 'glass', 'metal', 'trash'];
+                 const randomLabel = demoLabels[Math.floor(Math.random() * demoLabels.length)];
+                 const randomConfidence = 0.7 + Math.random() * 0.3; // 70-100%
+                 
+                 // 데모 모드에서도 한국어 매핑 적용
+                 let demoUnified = '알 수 없음';
+                 if (randomLabel === 'plastic') demoUnified = '플라스틱';
+                 else if (randomLabel === 'paper' || randomLabel === 'cardboard') demoUnified = '종이';
+                 else if (randomLabel === 'metal') demoUnified = '캔';
+                 else if (randomLabel === 'glass' || randomLabel === 'trash') demoUnified = '비닐';
+                 else demoUnified = '비닐';
+                 
+                 document.getElementById('result').innerHTML = 
+                     `🎯 분류 결과 (데모): <span style="color: #4CAF50">${demoUnified}</span><br>
+                      <small>원본: ${randomLabel} | 신뢰도: ${(randomConfidence * 100).toFixed(1)}%</small><br>
+                      <small style="color: #FFC107">⚠️ 분류 서버 미연결 - 데모 모드</small>`;
+                 
+                 document.getElementById('status').innerHTML = '📤 데모 결과 전송 중...';
+                 
+                 // 시리얼 전송 (데모 - 한국어 라벨 사용)
+                 if (writer) {
+                     await sendToSerial(demoUnified);
+                     document.getElementById('status').innerHTML = '✅ 데모 분류 완료';
+                 } else {
+                     document.getElementById('status').innerHTML = '⚠️ 시리얼 미연결';
+                 }
                   
                   return { label: randomLabel, confidence: randomConfidence };
               }
