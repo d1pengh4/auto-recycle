@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>자동 분리수거 기계 (Auto Recycle Machine)</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 500px; margin: 50px auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { text-align: center; }
+        #result { margin-top: 20px; font-size: 1.2em; text-align: center; }
+        input[type="file"] { display: block; margin: 20px auto; }
+        button { display: block; margin: 0 auto; padding: 10px 20px; font-size: 1em; }
+        #video { display: block; margin: 0 auto; border-radius: 10px; background: #222; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>자동 분리수거 기계<br><small>Auto Recycle Machine</small></h1>
+        <select id="cameraSelect" style="display:block; margin:10px auto; padding:5px 10px;"></select>
+        <video id="video" width="320" height="240" autoplay playsinline></video>
+        <div style="margin:10px 0; text-align:center;">
+            <button onclick="toggleAuto()" id="autoBtn">자동 분류 시작</button>
+            <button onclick="connectSerial()">아두이노 연결</button>
+        </div>
+        <div id="result">분류 결과가 여기에 표시됩니다</div>
+    </div>
+    <script>
+    let auto = false, intervalId = null, port = null, writer = null, lastLabel = '', lastSend = 0;
+    let currentStream = null;
+
+    // 카메라 목록 불러오기 및 선택
+    async function updateCameraList() {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        const select = document.getElementById('cameraSelect');
+        select.innerHTML = '';
+        videoDevices.forEach((device, idx) => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `Camera ${idx+1}`;
+            select.appendChild(option);
+        });
+    }
+
+    // 선택한 카메라로 스트림 시작
+    async function startCamera(deviceId) {
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+        }
+        const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: true };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        currentStream = stream;
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+    }
+
+    // 카메라 선택 변경 시 이벤트
+    document.getElementById('cameraSelect').addEventListener('change', async (e) => {
+        await startCamera(e.target.value);
+    });
+
+    // 페이지 로드 시 카메라 목록 및 기본 카메라 시작
+    window.addEventListener('DOMContentLoaded', async () => {
+        await updateCameraList();
+        const select = document.getElementById('cameraSelect');
+        if (select.options.length > 0) {
+            await startCamera(select.value);
+        }
+    });
+
+    async function toggleAuto() {
+      auto = !auto;
+      document.getElementById('autoBtn').innerText = auto ? '자동 분류 정지' : '자동 분류 시작';
+      if (auto) {
+        intervalId = setInterval(captureAndClassify, 2000);
+      } else {
+        clearInterval(intervalId);
+      }
+    }
+
+    async function captureAndClassify() {
+      const video = document.getElementById('video');
+      if (video.videoWidth === 0) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      const b64 = canvas.toDataURL('image/jpeg').split(',')[1];
+      document.getElementById('result').innerText = '분석 중...';
+      try {
+        const res = await fetch('http://localhost:5005/classify', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({image: b64})
+        });
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0 && data[0].label) {
+          let label = data[0].label;
+          let unified = '';
+          // 네 가지로 통합
+          if (label === 'plastic') unified = '플라스틱';
+          else if (label === 'paper' || label === 'cardboard') unified = '종이';
+          else if (label === 'metal') unified = '캔';
+          else unified = '비닐'; // glass, trash
+
+          document.getElementById('result').innerHTML = `<b>분류 결과:</b> ${unified} <br><b>신뢰도:</b> ${(data[0].score * 100).toFixed(2)}%`;
+
+          // 시리얼 신호도 통합된 값으로 전송
+          if (writer && data[0].score > 0.85 && (unified !== lastLabel || Date.now() - lastSend > 4000)) {
+            let cmd = '';
+            if (unified === '플라스틱') cmd = 'PLASTIC';
+            else if (unified === '종이') cmd = 'PAPER';
+            else if (unified === '캔') cmd = 'CAN';
+            else cmd = 'VINYL';
+            await writer.write(cmd + '\n');
+            lastLabel = unified;
+            lastSend = Date.now();
+          }
+        } else {
+          document.getElementById('result').innerText = '결과: ' + JSON.stringify(data, null, 2);
+        }
+      } catch (err) {
+        document.getElementById('result').innerText = '오류 발생: ' + err.message;
+      }
+    }
+
+    // Web Serial API
+    async function connectSerial() {
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({baudRate:9600});
+        writer = port.writable.getWriter();
+        alert('아두이노 연결 성공!');
+      } catch (e) {
+        alert('시리얼 연결 실패: ' + e.message);
+      }
+    }
+    </script>
+</body>
+</html> 
