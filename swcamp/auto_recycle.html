@@ -115,6 +115,7 @@
                 <option value="">카메라를 선택하세요...</option>
             </select>
             <button onclick="startCamera()">📷 카메라 시작</button>
+            <button onclick="stopCamera()">⏹️ 카메라 중지</button>
             <button onclick="toggleAuto()" id="autoBtn">🔄 자동 분류 시작</button>
             <button onclick="connectSerial()">🔌 시리얼 연결</button>
         </div>
@@ -154,6 +155,11 @@
         // 카메라 목록 업데이트
         async function updateCameraList() {
             try {
+                // 먼저 권한 요청을 위해 임시 스트림 생성
+                const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                tempStream.getTracks().forEach(track => track.stop());
+                
+                // 이제 실제 디바이스 목록 가져오기
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
                 const select = document.getElementById('cameraSelect');
@@ -163,6 +169,11 @@
                     select.removeChild(select.lastChild);
                 }
                 
+                if (videoDevices.length === 0) {
+                    document.getElementById('status').innerHTML = '❌ 사용 가능한 카메라가 없습니다';
+                    return;
+                }
+                
                 videoDevices.forEach((device, index) => {
                     const option = document.createElement('option');
                     option.value = device.deviceId;
@@ -170,11 +181,16 @@
                     select.appendChild(option);
                 });
                 
-                document.getElementById('status').innerHTML = `📷 ${videoDevices.length}개의 카메라 발견됨`;
+                // 첫 번째 카메라를 기본으로 선택
+                if (videoDevices.length > 0) {
+                    select.selectedIndex = 1;
+                }
+                
+                document.getElementById('status').innerHTML = `📷 ${videoDevices.length}개의 카메라 발견됨 - 카메라를 선택하고 시작하세요`;
                 
             } catch (error) {
                 console.error('카메라 목록 오류:', error);
-                document.getElementById('status').innerHTML = '❌ 카메라 목록 로드 실패';
+                document.getElementById('status').innerHTML = '❌ 카메라 접근 권한이 필요합니다';
             }
         }
 
@@ -184,6 +200,7 @@
                 // 기존 스트림 정리
                 if (currentStream) {
                     currentStream.getTracks().forEach(track => track.stop());
+                    currentStream = null;
                 }
                 
                 document.getElementById('status').innerHTML = '📷 카메라 초기화 중...';
@@ -198,8 +215,9 @@
                 const constraints = {
                     video: {
                         deviceId: { exact: selectedDeviceId },
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
+                        width: { ideal: 640, min: 320 },
+                        height: { ideal: 480, min: 240 },
+                        frameRate: { ideal: 30, min: 15 }
                     }
                 };
                 
@@ -207,17 +225,56 @@
                 const video = document.getElementById('video');
                 video.srcObject = currentStream;
                 
-                video.onloadedmetadata = () => {
-                    video.play();
-                    const selectedOption = document.getElementById('cameraSelect').selectedOptions[0];
-                    document.getElementById('status').innerHTML = `✅ ${selectedOption.text} 준비 완료`;
-                    document.getElementById('result').innerHTML = '카메라가 준비되었습니다';
-                };
+                // 비디오 로드 대기
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        video.play().then(() => {
+                            const selectedOption = document.getElementById('cameraSelect').selectedOptions[0];
+                            document.getElementById('status').innerHTML = `✅ ${selectedOption.text} 준비 완료`;
+                            document.getElementById('result').innerHTML = '카메라가 준비되었습니다. 자동 분류를 시작할 수 있습니다.';
+                            resolve();
+                        }).catch((playError) => {
+                            console.error('비디오 재생 오류:', playError);
+                            document.getElementById('status').innerHTML = '❌ 비디오 재생 실패';
+                        });
+                    };
+                    
+                    video.onerror = (videoError) => {
+                        console.error('비디오 오류:', videoError);
+                        document.getElementById('status').innerHTML = '❌ 비디오 로드 실패';
+                    };
+                });
                 
             } catch (error) {
                 console.error('카메라 오류:', error);
-                document.getElementById('status').innerHTML = '❌ 카메라 오류: ' + error.message;
-                document.getElementById('result').innerHTML = '카메라 연결 실패';
+                let errorMessage = '카메라 연결 실패';
+                
+                if (error.name === 'NotFoundError') {
+                    errorMessage = '선택한 카메라를 찾을 수 없습니다';
+                } else if (error.name === 'NotAllowedError') {
+                    errorMessage = '카메라 접근 권한이 거부되었습니다';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage = '카메라가 다른 앱에서 사용 중입니다';
+                } else if (error.name === 'OverconstrainedError') {
+                    errorMessage = '카메라가 요구사항을 지원하지 않습니다';
+                }
+                
+                document.getElementById('status').innerHTML = `❌ ${errorMessage}`;
+                document.getElementById('result').innerHTML = '카메라 연결 실패 - 다른 카메라를 선택해보세요';
+            }
+        }
+
+        // 카메라 중지
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+                
+                const video = document.getElementById('video');
+                video.srcObject = null;
+                
+                document.getElementById('status').innerHTML = '📷 카메라가 중지되었습니다';
+                document.getElementById('result').innerHTML = '카메라를 다시 시작하세요';
             }
         }
 
