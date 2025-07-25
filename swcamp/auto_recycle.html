@@ -126,21 +126,46 @@
             <button onclick="connectSerial()">🔌 시리얼 연결</button>
         </div>
         
-                 <div id="result">시스템 준비 중...</div>
-         <div id="status" class="status">카메라를 시작해주세요</div>
-         <div id="sensitivity" class="status" style="background: #333; color: #FFC107;">
-             🎚️ 변화 감지 민감도: <span id="sensitivityValue">15.0%</span>
-         </div>
+                         <div id="result">시스템 준비 중...</div>
+        <div id="status" class="status">카메라를 시작해주세요</div>
+        <div id="sensitivity" class="status" style="background: #333; color: #FFC107;">
+            🎚️ 변화 감지 민감도: <span id="sensitivityValue">15.0%</span>
+        </div>
+        
+        <!-- 시리얼 통신 모니터링 섹션 -->
+        <div class="serial-monitor" style="margin-top: 20px;">
+            <h3 style="color: #4CAF50; margin-bottom: 10px;">📡 아두이노 시리얼 모니터</h3>
+            <div class="serial-controls" style="margin-bottom: 10px;">
+                <button onclick="connectArduino()" id="connectBtn">🔌 아두이노 연결</button>
+                <button onclick="disconnectArduino()" id="disconnectBtn" disabled>🔌 연결 해제</button>
+                <button onclick="clearSerialLog()">🗑️ 로그 지우기</button>
+                <button onclick="sendTestCommand()">🧪 테스트 명령</button>
+            </div>
+            <div id="serialStatus" class="status" style="background: #444;">
+                🔌 아두이노 연결 상태: <span id="connectionStatus">연결 안됨</span>
+            </div>
+            <div class="serial-log-container" style="background: #000; border: 2px solid #4CAF50; border-radius: 8px; height: 200px; overflow-y: auto; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px;">
+                <div id="serialLog" style="color: #00FF00;"></div>
+            </div>
+            <div class="manual-command" style="margin-top: 10px;">
+                <input type="text" id="manualCommand" placeholder="수동 명령어 입력 (예: STATUS, HOME, TEST)" 
+                       style="padding: 8px; width: 70%; border-radius: 5px; border: 1px solid #4CAF50; background: #333; color: white;">
+                <button onclick="sendManualCommand()" style="padding: 8px 15px; margin-left: 5px;">📤 전송</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        // 전역 변수들
-        let auto = false;
-        let intervalId = null;
-        let port = null;
-        let writer = null;
-        let currentStream = null;
-        let isProcessing = false;
+                 // 전역 변수들
+         let auto = false;
+         let intervalId = null;
+         let port = null;
+         let writer = null;
+         let reader = null;
+         let currentStream = null;
+         let isProcessing = false;
+         let serialConnected = false;
+         let readLoop = null;
         
         // 배경 학습 및 최적화 변수들
         let backgroundModel = null;
@@ -573,23 +598,98 @@
              }
         }
 
-        // 시리얼 연결
-        async function connectSerial() {
-            try {
-                document.getElementById('status').innerHTML = '🔌 시리얼 포트 연결 중...';
-                
-                port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 9600 });
-                writer = port.writable.getWriter();
-                
-                document.getElementById('status').innerHTML = '✅ 시리얼 연결 완료';
-                console.log('시리얼 포트 연결 성공');
-                
-            } catch (error) {
-                console.error('시리얼 연결 오류:', error);
-                document.getElementById('status').innerHTML = '❌ 시리얼 연결 실패: ' + error.message;
-            }
-        }
+                 // 아두이노 연결 (시리얼 통신)
+         async function connectArduino() {
+             try {
+                 addSerialLog('🔌 아두이노 연결 시도 중...');
+                 updateConnectionStatus('연결 중...', '#FFC107');
+                 
+                 // 시리얼 포트 요청
+                 port = await navigator.serial.requestPort();
+                 await port.open({ 
+                     baudRate: 9600,
+                     dataBits: 8,
+                     stopBits: 1,
+                     parity: 'none'
+                 });
+                 
+                 // Writer와 Reader 설정
+                 writer = port.writable.getWriter();
+                 reader = port.readable.getReader();
+                 
+                 serialConnected = true;
+                 updateConnectionStatus('연결됨', '#4CAF50');
+                 
+                 // UI 업데이트
+                 document.getElementById('connectBtn').disabled = true;
+                 document.getElementById('disconnectBtn').disabled = false;
+                 
+                 addSerialLog('✅ 아두이노 연결 성공!');
+                 addSerialLog('📡 시리얼 모니터링 시작...');
+                 
+                 // 시리얼 데이터 읽기 시작
+                 startSerialReading();
+                 
+                 // 연결 확인 명령 전송
+                 setTimeout(() => {
+                     sendArduinoCommand('STATUS');
+                 }, 2000);
+                 
+             } catch (error) {
+                 console.error('아두이노 연결 오류:', error);
+                 addSerialLog('❌ 연결 실패: ' + error.message);
+                 updateConnectionStatus('연결 실패', '#f44336');
+                 serialConnected = false;
+             }
+         }
+
+         // 아두이노 연결 해제
+         async function disconnectArduino() {
+             try {
+                 addSerialLog('🔌 아두이노 연결 해제 중...');
+                 
+                 // 읽기 중지
+                 if (readLoop) {
+                     readLoop = false;
+                 }
+                 
+                 // Reader와 Writer 해제
+                 if (reader) {
+                     await reader.cancel();
+                     await reader.releaseLock();
+                     reader = null;
+                 }
+                 
+                 if (writer) {
+                     await writer.releaseLock();
+                     writer = null;
+                 }
+                 
+                 // 포트 닫기
+                 if (port) {
+                     await port.close();
+                     port = null;
+                 }
+                 
+                 serialConnected = false;
+                 updateConnectionStatus('연결 안됨', '#666');
+                 
+                 // UI 업데이트
+                 document.getElementById('connectBtn').disabled = false;
+                 document.getElementById('disconnectBtn').disabled = true;
+                 
+                 addSerialLog('✅ 아두이노 연결 해제 완료');
+                 
+             } catch (error) {
+                 console.error('연결 해제 오류:', error);
+                 addSerialLog('❌ 연결 해제 오류: ' + error.message);
+             }
+         }
+
+         // 시리얼 연결 (기존 함수 - 호환성 유지)
+         async function connectSerial() {
+             await connectArduino();
+         }
 
                  // 서버 상태 확인
          async function checkServer() {
@@ -940,33 +1040,159 @@
              });
          }
 
-         // 시리얼 데이터 전송
-         async function sendToSerial(label) {
-             if (!writer) return;
+         // 시리얼 데이터 읽기 시작
+         async function startSerialReading() {
+             readLoop = true;
              
              try {
-                 const command = `${label}\n`;
-                 const encoder = new TextEncoder();
-                 await writer.write(encoder.encode(command));
-                 console.log('시리얼 전송:', command.trim());
-                 
+                 while (readLoop && reader) {
+                     const { value, done } = await reader.read();
+                     
+                     if (done) {
+                         break;
+                     }
+                     
+                     // 바이트 데이터를 문자열로 변환
+                     const textDecoder = new TextDecoder();
+                     const receivedText = textDecoder.decode(value);
+                     
+                     // 시리얼 로그에 추가 (수신 데이터)
+                     if (receivedText.trim()) {
+                         addSerialLog('📨 ' + receivedText.trim(), '#00FFFF');
+                     }
+                 }
              } catch (error) {
-                 console.error('시리얼 전송 오류:', error);
+                 if (error.name !== 'AbortError') {
+                     console.error('시리얼 읽기 오류:', error);
+                     addSerialLog('❌ 읽기 오류: ' + error.message, '#FF6B6B');
+                 }
              }
          }
 
-        // 정리 함수
-        window.addEventListener('beforeunload', () => {
-            if (writer) {
-                writer.releaseLock();
-            }
-            if (port) {
-                port.close();
-            }
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-            }
-        });
+         // 아두이노에 명령 전송
+         async function sendArduinoCommand(command) {
+             if (!writer || !serialConnected) {
+                 addSerialLog('❌ 아두이노가 연결되지 않았습니다', '#FF6B6B');
+                 return false;
+             }
+             
+             try {
+                 const commandWithNewline = command + '\n';
+                 const encoder = new TextEncoder();
+                 await writer.write(encoder.encode(commandWithNewline));
+                 
+                 // 전송 로그 추가
+                 addSerialLog('📤 전송: ' + command, '#FFFF00');
+                 console.log('아두이노로 전송:', command);
+                 
+                 return true;
+             } catch (error) {
+                 console.error('명령 전송 오류:', error);
+                 addSerialLog('❌ 전송 실패: ' + error.message, '#FF6B6B');
+                 return false;
+             }
+         }
+
+         // 시리얼 데이터 전송 (기존 함수 - 호환성 유지)
+         async function sendToSerial(label) {
+             await sendArduinoCommand(label);
+         }
+
+         // 시리얼 로그에 메시지 추가
+         function addSerialLog(message, color = '#00FF00') {
+             const logContainer = document.getElementById('serialLog');
+             const timestamp = new Date().toLocaleTimeString();
+             
+             const logEntry = document.createElement('div');
+             logEntry.style.color = color;
+             logEntry.style.marginBottom = '2px';
+             logEntry.innerHTML = `[${timestamp}] ${message}`;
+             
+             logContainer.appendChild(logEntry);
+             
+             // 자동 스크롤 (최신 메시지가 보이도록)
+             logContainer.parentElement.scrollTop = logContainer.parentElement.scrollHeight;
+             
+             // 로그 개수 제한 (성능을 위해 최대 100개)
+             if (logContainer.children.length > 100) {
+                 logContainer.removeChild(logContainer.firstChild);
+             }
+         }
+
+         // 연결 상태 업데이트
+         function updateConnectionStatus(status, color) {
+             const statusElement = document.getElementById('connectionStatus');
+             statusElement.textContent = status;
+             statusElement.style.color = color;
+         }
+
+         // 시리얼 로그 지우기
+         function clearSerialLog() {
+             document.getElementById('serialLog').innerHTML = '';
+             addSerialLog('🗑️ 로그가 지워졌습니다');
+         }
+
+         // 테스트 명령 전송
+         function sendTestCommand() {
+             if (!serialConnected) {
+                 addSerialLog('❌ 먼저 아두이노를 연결해주세요', '#FF6B6B');
+                 return;
+             }
+             
+             const testCommands = ['STATUS', 'HOME', 'SERVO'];
+             const randomCommand = testCommands[Math.floor(Math.random() * testCommands.length)];
+             
+             addSerialLog('🧪 테스트 명령: ' + randomCommand, '#FFC107');
+             sendArduinoCommand(randomCommand);
+         }
+
+         // 수동 명령 전송
+         function sendManualCommand() {
+             const commandInput = document.getElementById('manualCommand');
+             const command = commandInput.value.trim().toUpperCase();
+             
+             if (!command) {
+                 addSerialLog('❌ 명령어를 입력해주세요', '#FF6B6B');
+                 return;
+             }
+             
+             if (!serialConnected) {
+                 addSerialLog('❌ 먼저 아두이노를 연결해주세요', '#FF6B6B');
+                 return;
+             }
+             
+             sendArduinoCommand(command);
+             commandInput.value = ''; // 입력창 비우기
+         }
+
+         // Enter 키로 명령 전송
+         document.addEventListener('DOMContentLoaded', function() {
+             const commandInput = document.getElementById('manualCommand');
+             if (commandInput) {
+                 commandInput.addEventListener('keypress', function(e) {
+                     if (e.key === 'Enter') {
+                         sendManualCommand();
+                     }
+                 });
+             }
+         });
+
+                 // 정리 함수
+         window.addEventListener('beforeunload', async () => {
+             // 시리얼 연결 정리
+             if (serialConnected) {
+                 try {
+                     await disconnectArduino();
+                 } catch (error) {
+                     console.error('정리 중 오류:', error);
+                 }
+             }
+             
+             // 카메라 스트림 정리
+             if (currentStream) {
+                 currentStream.getTracks().forEach(track => track.stop());
+             }
+         });
 
         // 자동 시작 (선택사항)
         window.addEventListener('load', () => {
