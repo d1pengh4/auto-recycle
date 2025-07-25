@@ -10,7 +10,7 @@ Stepper myStepper(stepsPerRevolution, 8, 10, 9, 11); // IN1, IN3, IN2, IN4
 
 // 서보모터 설정
 Servo dropperServo;
-const int servoPin = 6;
+const int servoPin = A1;
 
 // LCD 디스플레이 (16x2)
 LiquidCrystal lcd(12, 13, 5, 4, 3, 2);
