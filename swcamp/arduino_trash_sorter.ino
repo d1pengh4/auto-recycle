@@ -5,7 +5,7 @@
 // ===== 하드웨어 설정 =====
 // 스텝모터 설정 (28BYJ-48 + ULN2003)
 const int stepsPerRevolution = 2048; // 한 바퀴당 스텝 수
-Stepper myStepper(stepsPerRevolution, 8, 10, 9, 11); // IN1, IN3, IN2, IN4
+Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11); // 올바른 핀 순서: IN1, IN2, IN3, IN4
 
 // 서보모터 설정
 Servo dropperServo;
@@ -44,6 +44,7 @@ TrashConfig trashConfigs[] = {
 
 void setup() {
   Serial.begin(9600);
+  Serial.println("🤖 AI 쓰레기 분류기 시작!");
   
   // 핀 모드 설정
   pinMode(redLED, OUTPUT);
@@ -51,16 +52,27 @@ void setup() {
   pinMode(blueLED, OUTPUT);
   pinMode(buzzer, OUTPUT);
   
+  // 모든 LED 끄기
+  digitalWrite(redLED, LOW);
+  digitalWrite(greenLED, LOW);
+  digitalWrite(blueLED, LOW);
+  
   // LCD 초기화
   lcd.begin(16, 2);
   lcd.clear();
+  Serial.println("✅ LCD 초기화 완료");
   
-  // 스텝모터 속도 설정 (RPM)
-  myStepper.setSpeed(12); // 아두이노 우노 최적화
+  // 스텝모터 속도 설정 (RPM) - 우노에서 안전한 속도
+  myStepper.setSpeed(5); // 5 RPM (안전한 속도)
   
   // 서보모터 초기화
   dropperServo.attach(servoPin);
+  Serial.println("✅ 서보모터 연결됨");
+  dropperServo.write(90); // 안전한 중간 위치로 시작
+  delay(1000);
   dropperServo.write(0); // 시작 위치 (0도)
+  delay(500);
+  Serial.println("✅ 서보모터 초기화 완료");
   
   // 시스템 시작 시퀀스
   startupSequence();
@@ -226,10 +238,10 @@ void rotateWithAcceleration(int steps) {
   int absSteps = abs(steps);
   int direction = steps > 0 ? 1 : -1;
   
-  // 가속도 구간 (전체의 20%)
-  int accelSteps = absSteps / 5;
-  int maxSpeed = 15; // 최대 속도
-  int minSpeed = 8;  // 최소 속도
+  // 가속도 구간 (전체의 30%)
+  int accelSteps = absSteps / 3;
+  int maxSpeed = 8; // 최대 속도 (우노 안전)
+  int minSpeed = 3;  // 최소 속도
   
   for (int i = 0; i < absSteps; i++) {
     int currentSpeed;
@@ -378,6 +390,12 @@ bool handleSpecialCommands(String command) {
   } else if (command == "CALIBRATE") {
     calibrateMotors();
     return true;
+  } else if (command == "DEBUG") {
+    debugMotors();
+    return true;
+  } else if (command == "SIMPLE") {
+    simpleStepTest();
+    return true;
   }
   return false;
 }
@@ -455,4 +473,56 @@ void idleMode() {
   
   updateLCD("Idle Mode", "Waiting...");
   delay(1000);
+}
+
+// ===== 디버그 함수들 =====
+void debugMotors() {
+  Serial.println("🔍 모터 디버그 시작");
+  updateLCD("Debug Mode", "Motor Test");
+  
+  // 스텝모터 핀 상태 확인
+  Serial.println("스텝모터 핀 상태:");
+  Serial.println("핀 8: " + String(digitalRead(8)));
+  Serial.println("핀 9: " + String(digitalRead(9)));
+  Serial.println("핀 10: " + String(digitalRead(10)));
+  Serial.println("핀 11: " + String(digitalRead(11)));
+  
+  // 서보모터 테스트
+  Serial.println("서보모터 테스트:");
+  for (int pos = 0; pos <= 180; pos += 45) {
+    Serial.println("서보 위치: " + String(pos) + "도");
+    dropperServo.write(pos);
+    delay(1000);
+  }
+  dropperServo.write(0);
+  
+  Serial.println("✅ 디버그 완료");
+}
+
+void simpleStepTest() {
+  Serial.println("🔄 단순 스텝 테스트");
+  updateLCD("Simple Step", "Testing...");
+  
+  // 매우 느린 속도로 단순 테스트
+  myStepper.setSpeed(3); // 3 RPM
+  
+  Serial.println("10 스텝 전진");
+  for (int i = 0; i < 10; i++) {
+    myStepper.step(1);
+    Serial.print(".");
+    delay(100);
+  }
+  Serial.println();
+  
+  delay(1000);
+  
+  Serial.println("10 스텝 후진");
+  for (int i = 0; i < 10; i++) {
+    myStepper.step(-1);
+    Serial.print(".");
+    delay(100);
+  }
+  Serial.println();
+  
+  Serial.println("✅ 단순 테스트 완료");
 }
