@@ -32,10 +32,10 @@ struct TrashConfig {
 };
 
 TrashConfig trashConfigs[] = {
-  {"플라스틱", 0,   "PLA", greenLED},
-  {"종이",    90,   "PAP", blueLED},
-  {"캔",     180,   "CAN", redLED},
-  {"비닐",    270,   "VIN", greenLED}
+  {"플라스틱", 10,   "PLA", greenLED},
+  {"종이",    100,   "PAP", blueLED},
+  {"캔",     190,   "CAN", redLED},
+  {"비닐",    280,   "VIN", greenLED}
 };
 
 void setup() {
@@ -124,8 +124,8 @@ void homePosition() {
   Serial.println("🏠 홈 포지션으로 이동...");
   updateLCD("Homing...", "Please wait");
   
-  rotateToAngle(0);
-  currentAngle = 0;
+  rotateToAngle(10);
+  currentAngle = 10;
   currentTrashType = "";
   
   updateLCD("Ready to Sort", "Bins: 4 | Count:0");
@@ -362,7 +362,7 @@ void calibrateMotors() {
   updateLCD("Calibrating", "Motors...");
   
   // 스텝모터 한바퀴 회전
-  for (int angle = 0; angle <= 360; angle += 90) {
+  for (int angle = 10; angle <= 370; angle += 90) {
     rotateToAngle(angle);
     delay(1000);
   }
