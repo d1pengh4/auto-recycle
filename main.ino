@@ -1,11 +1,11 @@
 #include <Stepper.h>
 #include <LiquidCrystal.h>
 
-int stepChunk = 15;
+int stepChunk = 1;
 // ===== 하드웨어 설정 =====
 // 스텝모터 설정 (28BYJ-48 + ULN2003)
 const int stepsPerRevolution = 2048; // 한 바퀴당 스텝 수
-Stepper myStepper(stepsPerRevolution, 10, 12, 11, 13); // IN1, IN3, IN2, IN4 -> 디지털 10,11,12,13
+Stepper myStepper(stepsPerRevolution, 10, 11, 12, 13); // IN1, IN2, IN3, IN4 -> 디지털 10,11,12,13
 
 // LCD 디스플레이 (16x2) - 핀 재배치
 LiquidCrystal lcd(7, 8, 5, 4, 3, 2);
@@ -52,7 +52,7 @@ void setup() {
   lcd.clear();
   
   // 스텝모터 속도 설정 (RPM)
-  myStepper.setSpeed(12); // 아두이노 우노 최적화
+  myStepper.setSpeed(10); // 안정적인 속도로 조정
   
   // 시스템 시작 시퀀스
   startupSequence();
@@ -207,8 +207,8 @@ void rotateWithAcceleration(int steps) {
   
   // 가속도 구간 (전체의 20%)
   int accelSteps = absSteps / 5;
-  int maxSpeed = 15; // 최대 속도
-  int minSpeed = 8;  // 최소 속도
+  int maxSpeed = 10; // 최대 속도 (안정성 향상)
+  int minSpeed = 5;  // 최소 속도
   
   for (int i = 0; i < absSteps; i++) {
     int currentSpeed;
