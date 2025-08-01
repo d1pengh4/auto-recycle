@@ -1,14 +1,14 @@
 #include <Stepper.h>
 #include <LiquidCrystal.h>
 
-// stepChunk 변수 제거 (단순 회전 방식 사용)
+int stepChunk = 15;
 // ===== 하드웨어 설정 =====
 // 스텝모터 설정 (28BYJ-48 + ULN2003)
 const int stepsPerRevolution = 2048; // 한 바퀴당 스텝 수
-Stepper myStepper(stepsPerRevolution, 10, 11, 12, 13); // IN1, IN2, IN3, IN4 -> 디지털 10,11,12,13
+Stepper myStepper(stepsPerRevolution, 8, 10, 9, 11); // IN1, IN3, IN2, IN4
 
-// LCD 디스플레이 (16x2) - 핀 재배치
-LiquidCrystal lcd(7, 8, 5, 4, 3, 2);
+// LCD 디스플레이 (16x2)
+LiquidCrystal lcd(12, 13, 5, 4, 3, 2);
 
 // LED 및 부저
 const int redLED = A0;      // 빨간색 LED (에러/대기)
@@ -33,9 +33,9 @@ struct TrashConfig {
 
 TrashConfig trashConfigs[] = {
   {"플라스틱", 0,   "PLA", greenLED},
-  {"종이",    720,   "PAP", blueLED},
-  {"캔",     1440,   "CAN", redLED},
-  {"비닐",    2160,   "VIN", greenLED}
+  {"종이",    90,   "PAP", blueLED},
+  {"캔",     180,   "CAN", redLED},
+  {"비닐",    270,   "VIN", greenLED}
 };
 
 void setup() {
@@ -52,7 +52,7 @@ void setup() {
   lcd.clear();
   
   // 스텝모터 속도 설정 (RPM)
-  myStepper.setSpeed(10); // 안정적인 속도
+  myStepper.setSpeed(12); // 아두이노 우노 최적화
   
   // 시스템 시작 시퀀스
   startupSequence();
@@ -200,17 +200,39 @@ void rotateToAngle(int targetAngle) {
   Serial.println("✅ " + String(targetAngle) + "° 도달");
 }
 
-// 단순 회전 (기본 방식)
+// 가속도 적용 회전
 void rotateWithAcceleration(int steps) {
-  Serial.println("🔄 " + String(steps) + " 스텝 회전 시작");
+  int absSteps = abs(steps);
+  int direction = steps > 0 ? 1 : -1;
   
-  // 기본 속도 설정
-  myStepper.setSpeed(10);
+  // 가속도 구간 (전체의 20%)
+  int accelSteps = absSteps / 5;
+  int maxSpeed = 15; // 최대 속도
+  int minSpeed = 8;  // 최소 속도
   
-  // 한번에 전체 스텝 회전
-  myStepper.step(steps);
-  
-  Serial.println("✅ 회전 완료");
+  for (int i = 0; i < absSteps; i++) {
+    int currentSpeed;
+    
+    if (i < accelSteps) {
+      // 가속 구간
+      currentSpeed = map(i, 0, accelSteps, minSpeed, maxSpeed);
+    } else if (i > absSteps - accelSteps) {
+      // 감속 구간
+      currentSpeed = map(i, absSteps - accelSteps, absSteps, maxSpeed, minSpeed);
+    } else {
+      // 정속 구간
+      currentSpeed = maxSpeed;
+    }
+    
+    myStepper.setSpeed(currentSpeed);
+    myStepper.step(direction * stepChunk);
+    
+    // 진행률 표시 (매 10% 마다)
+    if (i % (absSteps / 10) == 0) {
+      int progress = (i * 100) / absSteps;
+      updateLCD("Rotating " + String(progress) + "%", "Please wait...");
+    }
+  }
 }
 
 // ===== 유틸리티 함수들 =====
@@ -339,14 +361,10 @@ void calibrateMotors() {
   Serial.println("🔧 모터 캘리브레이션 시작");
   updateLCD("Calibrating", "Motors...");
   
-  // 대용량 회전 테스트
-  int testAngles[] = {0, 720, 1440, 2160, 0};
-  
-  for (int i = 0; i < 5; i++) {
-    Serial.println("캘리브레이션 " + String(i+1) + "/5: " + String(testAngles[i]) + "도");
-    Serial.println("예상 바퀴수: " + String(testAngles[i]/360.0) + "바퀴");
-    rotateToAngle(testAngles[i]);
-    delay(3000); // 회전 확인을 위한 대기
+  // 스텝모터 한바퀴 회전
+  for (int angle = 0; angle <= 360; angle += 90) {
+    rotateToAngle(angle);
+    delay(1000);
   }
   
   homePosition();
