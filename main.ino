@@ -1,42 +1,31 @@
 #include <Stepper.h>
 #include <LiquidCrystal.h>
 
-int stepChunk = 1;
 // ===== 하드웨어 설정 =====
 // 스텝모터 설정 (28BYJ-48 + ULN2003)
-const int stepsPerRevolution = 2048; // 한 바퀴당 스텝 수
-Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11); // IN1, IN2, IN3, IN4 (올바른 순서)
+const int stepsPerRevolution = 2048;
+Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11); // IN1, IN2, IN3, IN4
 
 // LCD 디스플레이 (16x2)
 LiquidCrystal lcd(12, 13, 5, 4, 3, 2);
 
 // LED 및 부저
-const int redLED = A0;      // 빨간색 LED (에러/대기)
-const int greenLED = A1;    // 초록색 LED (동작 완료)
-const int blueLED = A2;     // 파란색 LED (동작 중)
-const int buzzer = A3;      // 부저
+const int redLED = A0;
+const int greenLED = A1;
+const int blueLED = A2;
+const int buzzer = A3;
 
 // ===== 시스템 변수 =====
-int currentAngle = 0;       // 현재 스텝모터 각도
-String currentTrashType = ""; // 현재 쓰레기 종류
-bool isMoving = false;      // 모터 동작 중 플래그
-unsigned long lastActivity = 0; // 마지막 활동 시간
-int totalProcessed = 0;     // 처리된 쓰레기 개수
+int currentAngle = 0;
+String currentTrashType = "";
+bool isMoving = false;
+unsigned long lastActivity = 0;
+int totalProcessed = 0;
 
-// 각 쓰레기 종류별 설정
-struct TrashConfig {
-  String type;
-  int angle;
-  String icon;
-  int ledPin;
-};
-
-TrashConfig trashConfigs[] = {
-  {"플라스틱", 0,   "PLA", greenLED},
-  {"종이",    360,   "PAP", blueLED},
-  {"캔",     720,   "CAN", redLED},
-  {"비닐",    1080,   "VIN", greenLED}
-};
+// 쓰레기 종류별 각도 (메모리 최적화)
+const int angles[] = {0, 360, 720, 1080}; // 0도, 1바퀴, 2바퀴, 3바퀴
+const char* types[] = {"플라스틱", "종이", "캔", "비닐"};
+const char* icons[] = {"PLA", "PAP", "CAN", "VIN"};
 
 void setup() {
   Serial.begin(9600);
@@ -51,16 +40,16 @@ void setup() {
   lcd.begin(16, 2);
   lcd.clear();
   
-  // 스텝모터 속도 설정 (RPM)
-  myStepper.setSpeed(8); // 안정적인 저속
+  // 스텝모터 속도 설정
+  myStepper.setSpeed(6); // 안정적인 저속
   
-  // 시스템 시작 시퀀스
+  // 시작 시퀀스
   startupSequence();
   
-  // 홈 포지션으로 이동
+  // 홈 포지션
   homePosition();
   
-  Serial.println("🤖 시스템 준비 완료!");
+  Serial.println(F("System Ready!"));
   lastActivity = millis();
 }
 
@@ -71,184 +60,201 @@ void loop() {
     receivedData.trim();
     
     if (receivedData.length() > 0) {
-      Serial.println("📨 받은 데이터: " + receivedData);
+      Serial.print(F("Received: "));
+      Serial.println(receivedData);
       
-      // 특수 명령어 처리
-      if (handleSpecialCommands(receivedData)) {
-        return;
+      // 명령어 처리
+      if (handleCommands(receivedData)) {
+        lastActivity = millis();
       }
-      
-      // 쓰레기 분류 처리
-      processTrashType(receivedData);
-      lastActivity = millis();
     }
   }
   
-  // 대기 모드 체크 (30초 무활동 시)
+  // 대기 모드 (30초 무활동)
   if (millis() - lastActivity > 30000 && !isMoving) {
     idleMode();
   }
   
-  delay(100); // CPU 부하 감소
+  delay(100);
 }
 
-// ===== 시스템 초기화 =====
+// ===== 시작 시퀀스 =====
 void startupSequence() {
-  // LCD 스플래시 화면
+  // LCD 화면
   lcd.setCursor(0, 0);
-  lcd.print("AI Trash Sorter");
+  lcd.print(F("Smart Sorter"));
   lcd.setCursor(0, 1);
-  lcd.print("Starting...     ");
+  lcd.print(F("Starting..."));
   
   // LED 시퀀스
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 2; i++) {
     digitalWrite(redLED, HIGH);
-    delay(200);
+    delay(150);
     digitalWrite(redLED, LOW);
     digitalWrite(greenLED, HIGH);
-    delay(200);
+    delay(150);
     digitalWrite(greenLED, LOW);
     digitalWrite(blueLED, HIGH);
-    delay(200);
+    delay(150);
     digitalWrite(blueLED, LOW);
   }
   
-  // 부저 시작음
-  playStartupSound();
+  // 시작음
+  playTone(262, 100); // 도
+  playTone(330, 100); // 미
+  playTone(392, 150); // 솔
   
-  delay(1000);
+  delay(500);
 }
 
 // ===== 홈 포지션 =====
 void homePosition() {
-  Serial.println("🏠 홈 포지션으로 이동...");
+  Serial.println(F("Homing..."));
   updateLCD("Homing...", "Please wait");
   
   rotateToAngle(0);
   currentAngle = 0;
   currentTrashType = "";
   
-  updateLCD("Ready to Sort", "Bins: 4 | Count:0");
+  updateLCD("Ready to Sort", "Count: 0");
   digitalWrite(greenLED, HIGH);
-  delay(500);
+  delay(300);
   digitalWrite(greenLED, LOW);
   
-  Serial.println("✅ 홈 포지션 완료");
+  Serial.println(F("Home complete"));
+}
+
+// ===== 명령어 처리 =====
+bool handleCommands(String command) {
+  // 특수 명령어
+  if (command == "TEST") {
+    runTest();
+    return true;
+  } else if (command == "HOME") {
+    homePosition();
+    return true;
+  } else if (command == "STATUS") {
+    printStatus();
+    return true;
+  } else if (command == "CALIBRATE") {
+    calibrateMotor();
+    return true;
+  } else if (command == "RESET") {
+    resetSystem();
+    return true;
+  }
+  
+  // 쓰레기 분류
+  return processTrash(command);
 }
 
 // ===== 쓰레기 분류 처리 =====
-void processTrashType(String trashType) {
-  isMoving = true;
-  digitalWrite(blueLED, HIGH); // 동작 중 표시
+bool processTrash(String trashType) {
+  int typeIndex = findTrashType(trashType);
   
-  // 쓰레기 설정 찾기
-  TrashConfig* config = findTrashConfig(trashType);
-  
-  if (config == nullptr) {
+  if (typeIndex == -1) {
     handleUnknownTrash(trashType);
-    isMoving = false;
-    digitalWrite(blueLED, LOW);
-    return;
+    return false;
   }
   
-  Serial.println("🎯 " + trashType + " → " + String(config->angle) + "°");
-  updateLCD("Sorting: " + config->icon, "Angle: " + String(config->angle) + " deg");
+  isMoving = true;
+  digitalWrite(blueLED, HIGH);
+  
+  int targetAngle = angles[typeIndex];
+  
+  Serial.print(F("Sorting: "));
+  Serial.print(types[typeIndex]);
+  Serial.print(F(" -> "));
+  Serial.print(targetAngle);
+  Serial.println(F(" deg"));
+  
+  updateLCD("Sorting:", icons[typeIndex]);
   
   // 효과음
-  playBeep(2, 100);
+  playBeep(2, 80);
   
-  // 스텝모터 동작
-  rotateToAngle(config->angle);
-  currentAngle = config->angle;
+  // 회전
+  rotateToAngle(targetAngle);
+  currentAngle = targetAngle;
   currentTrashType = trashType;
   
-  Serial.println("⏱️ 안정화 대기...");
-  updateLCD("Stabilizing...", "1 second wait");
-  delay(1000);
+  // 안정화
+  delay(800);
   
   // 완료 처리
   totalProcessed++;
   digitalWrite(blueLED, LOW);
   digitalWrite(greenLED, HIGH);
   playSuccessSound();
-  delay(300);
+  delay(200);
   digitalWrite(greenLED, LOW);
   
-  updateLCD("Complete! #" + String(totalProcessed), "Ready for next");
+  updateLCD("Complete!", "Count: " + String(totalProcessed));
   
   isMoving = false;
-  Serial.println("✅ 분류 완료! 총 " + String(totalProcessed) + "개 처리됨");
+  Serial.println(F("Sort complete"));
+  
+  return true;
 }
 
-// ===== 스텝모터 제어 (가속도 포함) =====
+// ===== 스텝모터 제어 =====
 void rotateToAngle(int targetAngle) {
   int angleDiff = calculateShortestPath(targetAngle);
   
   if (angleDiff == 0) {
-    Serial.println("💡 이미 목표 위치");
+    Serial.println(F("Already at target"));
     return;
   }
   
   int totalSteps = abs((angleDiff * stepsPerRevolution) / 360);
   
-  Serial.println("🔄 " + String(currentAngle) + "° → " + String(targetAngle) + "°");
-  Serial.println("📏 " + String(totalSteps) + " 스텝 이동");
+  Serial.print(F("Steps: "));
+  Serial.println(totalSteps);
   
-  // 가속도 적용 회전
-  rotateWithAcceleration(angleDiff > 0 ? totalSteps : -totalSteps);
-  
-  Serial.println("✅ " + String(targetAngle) + "° 도달");
+  // 단순 회전 (메모리 절약)
+  rotateSteps(angleDiff > 0 ? totalSteps : -totalSteps);
 }
 
-// 가속도 적용 회전
-void rotateWithAcceleration(int steps) {
-  int absSteps = abs(steps);
+void rotateSteps(int steps) {
   int direction = steps > 0 ? 1 : -1;
+  int totalSteps = abs(steps);
   
-  // 가속도 구간 (전체의 20%)
-  int accelSteps = absSteps / 5;
-  int maxSpeed = 8; // 최대 속도 (안정성 우선)
-  int minSpeed = 4;  // 최소 속도
+  // 고정 속도로 회전
+  myStepper.setSpeed(6);
   
-  for (int i = 0; i < absSteps; i++) {
-    int currentSpeed;
+  // 블록 단위 회전 (안정성)
+  int blockSize = 20;
+  int remaining = totalSteps;
+  
+  while (remaining > 0) {
+    int currentBlock = min(blockSize, remaining);
+    myStepper.step(direction * currentBlock);
+    remaining -= currentBlock;
     
-    if (i < accelSteps) {
-      // 가속 구간
-      currentSpeed = map(i, 0, accelSteps, minSpeed, maxSpeed);
-    } else if (i > absSteps - accelSteps) {
-      // 감속 구간
-      currentSpeed = map(i, absSteps - accelSteps, absSteps, maxSpeed, minSpeed);
-    } else {
-      // 정속 구간
-      currentSpeed = maxSpeed;
+    // 진행률 표시
+    if (totalSteps > 100 && remaining % 100 == 0) {
+      int progress = ((totalSteps - remaining) * 100) / totalSteps;
+      updateLCD("Rotating " + String(progress) + "%", "Please wait");
     }
     
-    myStepper.setSpeed(currentSpeed);
-    myStepper.step(direction * stepChunk);
-    
-    // 진행률 표시 (매 10% 마다)
-    if (i % (absSteps / 10) == 0) {
-      int progress = (i * 100) / absSteps;
-      updateLCD("Rotating " + String(progress) + "%", "Please wait...");
-    }
+    delay(5); // 안정성
   }
 }
 
-// ===== 유틸리티 함수들 =====
-TrashConfig* findTrashConfig(String trashType) {
+// ===== 유틸리티 함수 =====
+int findTrashType(String type) {
   for (int i = 0; i < 4; i++) {
-    if (trashConfigs[i].type == trashType) {
-      return &trashConfigs[i];
+    if (type == types[i]) {
+      return i;
     }
   }
-  return nullptr;
+  return -1;
 }
 
 int calculateShortestPath(int targetAngle) {
   int angleDiff = targetAngle - currentAngle;
   
-  // 최단 경로 계산
+  // 최단 경로 계산 (360도 기준)
   if (angleDiff > 180) {
     angleDiff -= 360;
   } else if (angleDiff < -180) {
@@ -261,7 +267,7 @@ int calculateShortestPath(int targetAngle) {
 void updateLCD(String line1, String line2) {
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print(line1.substring(0, 16)); // 16글자 제한
+  lcd.print(line1.substring(0, 16));
   lcd.setCursor(0, 1);
   lcd.print(line2.substring(0, 16));
 }
@@ -276,124 +282,112 @@ void playBeep(int count, int duration) {
   }
 }
 
-void playStartupSound() {
-  int melody[] = {262, 294, 330, 349}; // 도, 레, 미, 파
-  for (int i = 0; i < 4; i++) {
-    tone(buzzer, melody[i], 200);
-    delay(250);
-  }
+void playTone(int frequency, int duration) {
+  tone(buzzer, frequency, duration);
+  delay(duration + 20);
   noTone(buzzer);
 }
 
 void playSuccessSound() {
-  tone(buzzer, 523, 100); // 높은 도
-  delay(120);
-  tone(buzzer, 659, 100); // 높은 미
-  delay(120);
-  tone(buzzer, 784, 200); // 높은 솔
-  delay(220);
-  noTone(buzzer);
+  playTone(523, 80);  // 높은 도
+  playTone(659, 80);  // 높은 미
+  playTone(784, 120); // 높은 솔
 }
 
 void playErrorSound() {
-  for (int i = 0; i < 3; i++) {
-    tone(buzzer, 200, 100); // 낮은 부저음
-    delay(150);
+  for (int i = 0; i < 2; i++) {
+    playTone(200, 100);
+    delay(50);
   }
-  noTone(buzzer);
 }
 
-// ===== 특수 명령어 처리 =====
-bool handleSpecialCommands(String command) {
-  if (command == "TEST") {
-    runFullTest();
-    return true;
-  } else if (command == "HOME") {
-    homePosition();
-    return true;
-  } else if (command == "STATUS") {
-    printSystemStatus();
-    return true;
-  } else if (command == "RESET") {
-    resetSystem();
-    return true;
-  } else if (command == "CALIBRATE") {
-    calibrateMotors();
-    return true;
-  }
-  return false;
-}
-
-void runFullTest() {
-  Serial.println("🧪 전체 시스템 테스트 시작");
-  updateLCD("Full System", "Test Mode");
-  
-  String testTypes[] = {"플라스틱", "종이", "캔", "비닐"};
+// ===== 테스트 및 캘리브레이션 =====
+void runTest() {
+  Serial.println(F("Running test..."));
+  updateLCD("Test Mode", "Starting...");
   
   for (int i = 0; i < 4; i++) {
-    Serial.println("테스트 " + String(i+1) + "/4: " + testTypes[i]);
-    processTrashType(testTypes[i]);
+    Serial.print(F("Test "));
+    Serial.print(i + 1);
+    Serial.print(F("/4: "));
+    Serial.println(types[i]);
+    
+    processTrash(types[i]);
+    delay(1500);
+  }
+  
+  homePosition();
+  Serial.println(F("Test complete"));
+}
+
+void calibrateMotor() {
+  Serial.println(F("Calibrating..."));
+  updateLCD("Calibrating", "Motors...");
+  
+  for (int i = 0; i < 4; i++) {
+    Serial.print(F("Position "));
+    Serial.print(i + 1);
+    Serial.print(F(": "));
+    Serial.print(angles[i]);
+    Serial.println(F(" deg"));
+    
+    rotateToAngle(angles[i]);
     delay(2000);
   }
   
   homePosition();
-  Serial.println("🧪 테스트 완료");
+  Serial.println(F("Calibration done"));
 }
 
-void printSystemStatus() {
-  Serial.println("=== 시스템 상태 ===");
-  Serial.println("현재 각도: " + String(currentAngle) + "°");
-  Serial.println("현재 타입: " + currentTrashType);
-  Serial.println("처리 개수: " + String(totalProcessed));
-  Serial.println("동작 상태: " + String(isMoving ? "동작중" : "대기중"));
-  Serial.println("업타임: " + String(millis()/1000) + "초");
-  Serial.println("==================");
+void printStatus() {
+  Serial.println(F("=== STATUS ==="));
+  Serial.print(F("Angle: "));
+  Serial.println(currentAngle);
+  Serial.print(F("Type: "));
+  Serial.println(currentTrashType);
+  Serial.print(F("Count: "));
+  Serial.println(totalProcessed);
+  Serial.print(F("Moving: "));
+  Serial.println(isMoving ? F("YES") : F("NO"));
+  Serial.print(F("Uptime: "));
+  Serial.print(millis() / 1000);
+  Serial.println(F(" sec"));
+  Serial.println(F("============"));
 }
 
 void resetSystem() {
-  Serial.println("🔄 시스템 리셋");
+  Serial.println(F("Resetting..."));
   totalProcessed = 0;
   homePosition();
-  Serial.println("✅ 리셋 완료");
+  Serial.println(F("Reset complete"));
 }
 
-void calibrateMotors() {
-  Serial.println("🔧 모터 캘리브레이션 시작");
-  updateLCD("Calibrating", "Motors...");
+void handleUnknownTrash(String type) {
+  Serial.print(F("Unknown type: "));
+  Serial.println(type);
   
-  // 대용량 회전 테스트
-  int testAngles[] = {0, 360, 720, 1080, 0};
-  
-  for (int i = 0; i < 5; i++) {
-    Serial.println("=== 캘리브레이션 " + String(i+1) + "/5 ===");
-    Serial.println("목표: " + String(testAngles[i]) + "도 (" + String(testAngles[i]/360.0) + "바퀴)");
-    rotateToAngle(testAngles[i]);
-    Serial.println("완료, 3초 대기...");
-    delay(3000);
-  }
-  
-  homePosition();
-  Serial.println("✅ 캘리브레이션 완료");
-}
-
-void handleUnknownTrash(String trashType) {
-  Serial.println("❌ 알 수 없는 타입: " + trashType);
-  updateLCD("Unknown Type", trashType);
+  updateLCD("Unknown Type", type.substring(0, 16));
   
   digitalWrite(redLED, HIGH);
   playErrorSound();
-  delay(1000);
+  delay(800);
   digitalWrite(redLED, LOW);
   
-  updateLCD("Supported Types", "PLA|PAP|CAN|VIN");
-  delay(2000);
+  updateLCD("Supported:", "PLA PAP CAN VIN");
+  delay(1500);
 }
 
 void idleMode() {
   static bool ledState = false;
-  ledState = !ledState;
-  digitalWrite(greenLED, ledState);
+  static unsigned long lastBlink = 0;
   
-  updateLCD("Idle Mode", "Waiting...");
-  delay(1000);
+  if (millis() - lastBlink > 1000) {
+    ledState = !ledState;
+    digitalWrite(greenLED, ledState);
+    lastBlink = millis();
+    
+    if (ledState) {
+      updateLCD("Idle Mode", "Waiting...");
+    }
+  }
 }
