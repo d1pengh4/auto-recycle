@@ -33,9 +33,9 @@ struct TrashConfig {
 
 TrashConfig trashConfigs[] = {
   {"플라스틱", 0,   "PLA", greenLED},
-  {"종이",    90,   "PAP", blueLED},
-  {"캔",     180,   "CAN", redLED},
-  {"비닐",    270,   "VIN", greenLED}
+  {"종이",    720,   "PAP", blueLED},
+  {"캔",     1440,   "CAN", redLED},
+  {"비닐",    2160,   "VIN", greenLED}
 };
 
 void setup() {
@@ -339,11 +339,14 @@ void calibrateMotors() {
   Serial.println("🔧 모터 캘리브레이션 시작");
   updateLCD("Calibrating", "Motors...");
   
-  // 기본 각도로 회전 테스트
-  for (int angle = 0; angle <= 360; angle += 90) {
-    Serial.println("캘리브레이션: " + String(angle) + "도");
-    rotateToAngle(angle);
-    delay(2000);
+  // 대용량 회전 테스트
+  int testAngles[] = {0, 720, 1440, 2160, 0};
+  
+  for (int i = 0; i < 5; i++) {
+    Serial.println("캘리브레이션 " + String(i+1) + "/5: " + String(testAngles[i]) + "도");
+    Serial.println("예상 바퀴수: " + String(testAngles[i]/360.0) + "바퀴");
+    rotateToAngle(testAngles[i]);
+    delay(3000); // 회전 확인을 위한 대기
   }
   
   homePosition();
