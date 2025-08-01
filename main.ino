@@ -1,19 +1,14 @@
 #include <Stepper.h>
-#include <Servo.h>
 #include <LiquidCrystal.h>
 
 int stepChunk = 15;
 // ===== 하드웨어 설정 =====
 // 스텝모터 설정 (28BYJ-48 + ULN2003)
 const int stepsPerRevolution = 2048; // 한 바퀴당 스텝 수
-Stepper myStepper(stepsPerRevolution, 8, 10, 9, 11); // IN1, IN3, IN2, IN4
+Stepper myStepper(stepsPerRevolution, 10, 12, 11, 13); // IN1, IN3, IN2, IN4 -> 디지털 10,11,12,13
 
-// 서보모터 설정
-Servo dropperServo;
-const int servoPin = 6;
-
-// LCD 디스플레이 (16x2)
-LiquidCrystal lcd(12, 13, 5, 4, 3, 2);
+// LCD 디스플레이 (16x2) - 핀 재배치
+LiquidCrystal lcd(7, 8, 5, 4, 3, 2);
 
 // LED 및 부저
 const int redLED = A0;      // 빨간색 LED (에러/대기)
@@ -58,10 +53,6 @@ void setup() {
   
   // 스텝모터 속도 설정 (RPM)
   myStepper.setSpeed(12); // 아두이노 우노 최적화
-  
-  // 서보모터 초기화
-  dropperServo.attach(servoPin);
-  dropperServo.write(0); // 시작 위치 (0도)
   
   // 시스템 시작 시퀀스
   startupSequence();
@@ -137,10 +128,6 @@ void homePosition() {
   currentAngle = 0;
   currentTrashType = "";
   
-  // 서보모터도 홈 포지션
-  dropperServo.write(0);
-  delay(500);
-  
   updateLCD("Ready to Sort", "Bins: 4 | Count:0");
   digitalWrite(greenLED, HIGH);
   delay(500);
@@ -170,23 +157,14 @@ void processTrashType(String trashType) {
   // 효과음
   playBeep(2, 100);
   
-  // 같은 종류 체크
-  if (currentTrashType == trashType && currentAngle == config->angle) {
-    Serial.println("💡 같은 종류 - 서보만 동작");
-    updateLCD("Same Type", "Servo Only");
-    activateDropper();
-  } else {
-    // 스텝모터 + 서보 동작
-    rotateToAngle(config->angle);
-    currentAngle = config->angle;
-    currentTrashType = trashType;
-    
-    Serial.println("⏱️ 안정화 대기...");
-    updateLCD("Stabilizing...", "1 second wait");
-    delay(1000);
-    
-    activateDropper();
-  }
+  // 스텝모터 동작
+  rotateToAngle(config->angle);
+  currentAngle = config->angle;
+  currentTrashType = trashType;
+  
+  Serial.println("⏱️ 안정화 대기...");
+  updateLCD("Stabilizing...", "1 second wait");
+  delay(1000);
   
   // 완료 처리
   totalProcessed++;
@@ -248,7 +226,6 @@ void rotateWithAcceleration(int steps) {
     
     myStepper.setSpeed(currentSpeed);
     myStepper.step(direction * stepChunk);
-    // myStepper.step(direction);
     
     // 진행률 표시 (매 10% 마다)
     if (i % (absSteps / 10) == 0) {
@@ -256,40 +233,6 @@ void rotateWithAcceleration(int steps) {
       updateLCD("Rotating " + String(progress) + "%", "Please wait...");
     }
   }
-}
-
-// ===== 서보모터 제어 (업그레이드) =====
-void activateDropper() {
-  Serial.println("🔧 서보 드로퍼 동작 시작");
-  updateLCD("Dropping Trash", "Servo Active");
-  
-  // 시작 위치 확인 (0도)
-  dropperServo.write(0);
-  delay(300);
-  
-  // 0도 → 180도 (부드럽게)
-  Serial.println("📏 0° → 180° 이동");
-  for (int pos = 0; pos <= 180; pos += 3) {
-    dropperServo.write(pos);
-    delay(15); // 부드러운 움직임
-    
-    // 중간 지점에서 효과음
-    if (pos == 90) {
-      playBeep(1, 50);
-    }
-  }
-  
-  delay(300); // 180도에서 잠시 대기
-  
-  // 180도 → 0도 (복귀)
-  Serial.println("🔄 180° → 0° 복귀");
-  for (int pos = 180; pos >= 0; pos -= 3) {
-    dropperServo.write(pos);
-    delay(15);
-  }
-  
-  delay(200); // 안정화
-  Serial.println("✅ 서보 드로퍼 동작 완료");
 }
 
 // ===== 유틸리티 함수들 =====
@@ -371,9 +314,6 @@ bool handleSpecialCommands(String command) {
   } else if (command == "STATUS") {
     printSystemStatus();
     return true;
-  } else if (command == "SERVO") {
-    activateDropper();
-    return true;
   } else if (command == "RESET") {
     resetSystem();
     return true;
@@ -425,12 +365,6 @@ void calibrateMotors() {
   for (int angle = 0; angle <= 360; angle += 90) {
     rotateToAngle(angle);
     delay(1000);
-  }
-  
-  // 서보모터 전체 범위 테스트
-  for (int i = 0; i < 3; i++) {
-    activateDropper();
-    delay(500);
   }
   
   homePosition();
