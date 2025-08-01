@@ -1,11 +1,11 @@
 #include <Stepper.h>
 #include <LiquidCrystal.h>
 
-int stepChunk = 15;
+int stepChunk = 1;
 // ===== 하드웨어 설정 =====
 // 스텝모터 설정 (28BYJ-48 + ULN2003)
 const int stepsPerRevolution = 2048; // 한 바퀴당 스텝 수
-Stepper myStepper(stepsPerRevolution, 8, 10, 9, 11); // IN1, IN3, IN2, IN4
+Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11); // IN1, IN2, IN3, IN4 (올바른 순서)
 
 // LCD 디스플레이 (16x2)
 LiquidCrystal lcd(12, 13, 5, 4, 3, 2);
@@ -33,9 +33,9 @@ struct TrashConfig {
 
 TrashConfig trashConfigs[] = {
   {"플라스틱", 0,   "PLA", greenLED},
-  {"종이",    90,   "PAP", blueLED},
-  {"캔",     180,   "CAN", redLED},
-  {"비닐",    270,   "VIN", greenLED}
+  {"종이",    360,   "PAP", blueLED},
+  {"캔",     720,   "CAN", redLED},
+  {"비닐",    1080,   "VIN", greenLED}
 };
 
 void setup() {
@@ -52,7 +52,7 @@ void setup() {
   lcd.clear();
   
   // 스텝모터 속도 설정 (RPM)
-  myStepper.setSpeed(12); // 아두이노 우노 최적화
+  myStepper.setSpeed(8); // 안정적인 저속
   
   // 시스템 시작 시퀀스
   startupSequence();
@@ -207,8 +207,8 @@ void rotateWithAcceleration(int steps) {
   
   // 가속도 구간 (전체의 20%)
   int accelSteps = absSteps / 5;
-  int maxSpeed = 15; // 최대 속도
-  int minSpeed = 8;  // 최소 속도
+  int maxSpeed = 8; // 최대 속도 (안정성 우선)
+  int minSpeed = 4;  // 최소 속도
   
   for (int i = 0; i < absSteps; i++) {
     int currentSpeed;
@@ -361,10 +361,15 @@ void calibrateMotors() {
   Serial.println("🔧 모터 캘리브레이션 시작");
   updateLCD("Calibrating", "Motors...");
   
-  // 스텝모터 한바퀴 회전
-  for (int angle = 0; angle <= 360; angle += 90) {
-    rotateToAngle(angle);
-    delay(1000);
+  // 대용량 회전 테스트
+  int testAngles[] = {0, 360, 720, 1080, 0};
+  
+  for (int i = 0; i < 5; i++) {
+    Serial.println("=== 캘리브레이션 " + String(i+1) + "/5 ===");
+    Serial.println("목표: " + String(testAngles[i]) + "도 (" + String(testAngles[i]/360.0) + "바퀴)");
+    rotateToAngle(testAngles[i]);
+    Serial.println("완료, 3초 대기...");
+    delay(3000);
   }
   
   homePosition();
