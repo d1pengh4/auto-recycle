@@ -33,9 +33,9 @@ struct TrashConfig {
 
 TrashConfig trashConfigs[] = {
   {"플라스틱", 0,   "PLA", greenLED},
-  {"종이",    120,   "PAP", blueLED},
-  {"캔",     240,   "CAN", redLED},
-  {"비닐",    300,   "VIN", greenLED}
+  {"종이",    180,   "PAP", blueLED},
+  {"캔",     360,   "CAN", redLED},
+  {"비닐",    540,   "VIN", greenLED}
 };
 
 void setup() {
@@ -52,7 +52,7 @@ void setup() {
   lcd.clear();
   
   // 스텝모터 속도 설정 (RPM)
-  myStepper.setSpeed(10); // 안정적인 속도로 조정
+  myStepper.setSpeed(15); // 더 빠른 속도로 조정
   
   // 시스템 시작 시퀀스
   startupSequence();
@@ -200,36 +200,38 @@ void rotateToAngle(int targetAngle) {
   Serial.println("✅ " + String(targetAngle) + "° 도달");
 }
 
-// 단순화된 회전 (큰 각도 이동)
+// 대용량 회전 (큰 각도 이동)
 void rotateWithAcceleration(int steps) {
   int direction = steps > 0 ? 1 : -1;
   int totalSteps = abs(steps);
   
   Serial.println("🔄 총 " + String(totalSteps) + " 스텝 회전 시작");
   
-  // 고정 속도로 회전 (안정성 향상)
-  myStepper.setSpeed(8);
+  // 더 빠른 속도로 설정
+  myStepper.setSpeed(15);
   
-  // 한번에 더 많은 스텝으로 회전
-  int stepSize = 50; // 한번에 50스텝씩 회전
+  // 대용량 블록으로 회전 (200스텝씩)
+  int stepSize = 200; // 한번에 200스텝씩 회전
   int remainingSteps = totalSteps;
+  int rotationCount = 0;
   
   while (remainingSteps > 0) {
     int currentStepSize = min(stepSize, remainingSteps);
+    
+    Serial.println("회전 " + String(++rotationCount) + ": " + String(currentStepSize) + " 스텝");
     myStepper.step(direction * currentStepSize);
     remainingSteps -= currentStepSize;
     
     // 진행률 표시
     int progress = ((totalSteps - remainingSteps) * 100) / totalSteps;
-    if (progress % 25 == 0) {
-      updateLCD("Rotating " + String(progress) + "%", "Please wait...");
-      Serial.println("진행률: " + String(progress) + "%");
-    }
+    updateLCD("Rotating " + String(progress) + "%", "Steps: " + String(totalSteps - remainingSteps));
+    Serial.println("진행률: " + String(progress) + "% (남은 스텝: " + String(remainingSteps) + ")");
     
-    delay(10); // 짧은 딜레이로 안정성 확보
+    // 회전 확인을 위한 짧은 딜레이
+    delay(50);
   }
   
-  Serial.println("✅ 회전 완료");
+  Serial.println("✅ 회전 완료: 총 " + String(totalSteps) + " 스텝 이동됨");
 }
 
 // ===== 유틸리티 함수들 =====
@@ -358,13 +360,15 @@ void calibrateMotors() {
   Serial.println("🔧 모터 캘리브레이션 시작");
   updateLCD("Calibrating", "Motors...");
   
-  // 스텝모터 각 위치로 회전 테스트
-  int testAngles[] = {0, 120, 240, 300, 0};
+  // 스텝모터 대용량 회전 테스트
+  int testAngles[] = {0, 180, 360, 540, 0};
   
   for (int i = 0; i < 5; i++) {
-    Serial.println("캘리브레이션: " + String(testAngles[i]) + "도로 이동");
+    Serial.println("=== 캘리브레이션 " + String(i+1) + "/5 ===");
+    Serial.println("목표 각도: " + String(testAngles[i]) + "도");
     rotateToAngle(testAngles[i]);
-    delay(2000); // 더 긴 대기시간으로 확인 가능
+    Serial.println("도달 완료, 3초 대기...");
+    delay(3000); // 더 긴 대기시간으로 회전 확인
   }
   
   homePosition();
